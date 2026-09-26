@@ -916,11 +916,14 @@ function renderToday() {
   const d = new Date();
   $('#today-title').textContent = 'Сегодня, ' + d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
   const t = dayRO(); const nl = nextLesson();
-  const lessonDone = (t.lessons || []).length > 0;
+  // урок, пройденный сегодня последним; если его нет — следующий непройденный
+  const doneToday = (t.lessons || []).length ? LESSONS.find(l => l.id === t.lessons[t.lessons.length - 1]) : null;
+  const shownL = doneToday || nl;
   const items = [
-    { go: 'lessons', lesson: nl && nl.id, done: lessonDone,
-      title: nl ? `Урок ${nl.n}. ${nl.title}` : 'Повторить любой урок',
-      sub: nl ? '5–10 минут' : 'Все доступные уроки пройдены', cnt: lessonDone ? 'пройден' : '' },
+    { go: 'lessons', lesson: shownL && shownL.id, done: !!doneToday,
+      title: shownL ? `Урок ${shownL.n}. ${shownL.title}` : 'Повторить любой урок',
+      sub: doneToday ? (nl ? `Дальше: урок ${nl.n}. ${nl.title}` : 'Все доступные уроки пройдены') : nl ? '5–10 минут' : 'Все доступные уроки пройдены',
+      cnt: doneToday ? 'пройден' : '' },
     { go: 'notes', kind: 'names', done: t.notes >= 30, title: S.noteCfg.mode === 'levels' ? `Чтение нот · уровень ${S.lv.cur + 1}` : 'Чтение нот', sub: '30 нот, около 3 минут', cnt: `${Math.min(t.notes, 30)} / 30` },
     ...(S.lessons.st ? [{ go: 'notes', kind: 'steps', done: t.steps >= 10, title: 'Шаги и скачки', sub: '10 заданий', cnt: `${Math.min(t.steps, 10)} / 10` }] : []),
     { go: 'ear', done: t.ear >= 10, title: 'Интервалы на слух', sub: '10 заданий', cnt: `${Math.min(t.ear, 10)} / 10` },
