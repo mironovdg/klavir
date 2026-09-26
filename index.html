@@ -1,0 +1,1453 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Клавир</title>
+<meta name="description" content="Домашний класс: нотная грамота, сольфеджио и фортепиано">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alice&family=Golos+Text:wght@400;500;600&family=Noto+Music&display=swap">
+<style>
+:root{
+  --bg:#F2F4F7; --surface:#FFFFFF; --surface-2:#E8EBF1; --ink:#161A22; --muted:#5A6272; --line:#D5DAE3;
+  --accent:#2C4AA6; --accent-ink:#FFFFFF; --accent-soft:#DCE3F6;
+  --ok:#23784A; --ok-soft:#DAF0E2; --bad:#B8372B; --bad-soft:#F7DEDA; --warn:#9A6212; --warn-soft:#F5E8CF; --hold:#5E5A8C; --hold-soft:#E5E3F2;
+  --display:"Alice", Georgia, "Times New Roman", serif;
+  --body:"Golos Text", "Segoe UI", system-ui, sans-serif;
+  --music:"Noto Music", "Segoe UI Symbol", serif;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#111318; --surface:#1A1D24; --surface-2:#232833; --ink:#E7EAF0; --muted:#98A0AF; --line:#2D333F;
+    --accent:#8EA6F2; --accent-ink:#0F1426; --accent-soft:#26304D;
+    --ok:#5CC48A; --ok-soft:#18342A; --bad:#F08073; --bad-soft:#3D1F1D; --warn:#E3AE5B; --warn-soft:#3A2D17; --hold:#B3ACEB; --hold-soft:#2A2842;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#111318; --surface:#1A1D24; --surface-2:#232833; --ink:#E7EAF0; --muted:#98A0AF; --line:#2D333F;
+  --accent:#8EA6F2; --accent-ink:#0F1426; --accent-soft:#26304D;
+  --ok:#5CC48A; --ok-soft:#18342A; --bad:#F08073; --bad-soft:#3D1F1D; --warn:#E3AE5B; --warn-soft:#3A2D17; --hold:#B3ACEB; --hold-soft:#2A2842;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg); color:var(--ink); font:16px/1.55 var(--body); margin:0}
+h1,h2,h3{font-family:var(--display); font-weight:400; text-wrap:balance; margin:0; line-height:1.2}
+button{font:inherit; color:inherit; cursor:pointer}
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+a{color:var(--accent)}
+.muted{color:var(--muted)}
+.wrap{max-width:980px; margin:0 auto; padding-inline:16px}
+
+/* шапка */
+.top{position:sticky; top:env(safe-area-inset-top,0px); z-index:20; background:var(--bg); border-bottom:1px solid var(--line)}
+.top .wrap{display:flex; align-items:center; gap:16px; padding-block:10px; flex-wrap:wrap}
+.brand{display:flex; align-items:baseline; gap:6px; font-family:var(--display); font-size:26px; text-decoration:none; color:var(--ink)}
+.brand .clef{font-family:var(--music); color:var(--accent); font-size:30px; line-height:1}
+nav.tabs{display:flex; gap:4px; overflow-x:auto; flex:1 1 auto; scrollbar-width:none}
+nav.tabs::-webkit-scrollbar{display:none}
+.tab{border:0; background:none; padding:7px 12px; border-radius:999px; white-space:nowrap; color:var(--muted); font-weight:500; position:relative}
+.tab:hover{color:var(--ink); background:var(--surface-2)}
+.tab[aria-current="page"]{background:var(--ink); color:var(--bg)}
+.badge{display:inline-grid; place-items:center; min-width:18px; height:18px; padding:0 5px; margin-left:4px; border-radius:9px; background:var(--bad); color:#fff; font-size:11px; font-weight:600; vertical-align:1px}
+.gear{border:1px solid var(--line); background:var(--surface); border-radius:999px; padding:6px 12px; font-size:14px}
+
+.panel{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:18px}
+#settings{margin-block:12px}
+#settings .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:18px}
+fieldset{border:0; padding:0; margin:0; display:grid; gap:6px}
+legend{font-weight:600; font-size:13px; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); margin-bottom:4px}
+label.opt{display:flex; gap:8px; align-items:center}
+input[type=range]{width:100%; accent-color:var(--accent)}
+input[type=checkbox], input[type=radio]{accent-color:var(--accent)}
+
+main{padding-block:24px 32px}
+.sec-head{display:flex; align-items:center; gap:12px; margin-bottom:6px; flex-wrap:wrap}
+.sec-head h1{font-size:34px}
+.help{width:30px; height:30px; border-radius:50%; border:1px solid var(--line); background:var(--surface); font-weight:600; color:var(--muted)}
+.help[aria-expanded="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+.hint{background:var(--accent-soft); border-radius:var(--r); padding:12px 16px; margin-block:8px 14px; max-width:70ch}
+.hint p{margin:0 0 6px} .hint p:last-child{margin:0}
+.lead{color:var(--muted); margin:0 0 18px; max-width:65ch}
+
+.btn{border:1px solid var(--line); background:var(--surface); padding:9px 16px; border-radius:8px; font-weight:500}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+.btn:disabled{opacity:.5; cursor:default}
+.row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+.seg{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--surface)}
+.seg button{border:0; background:none; padding:7px 12px; font-size:14px}
+.seg button + button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--ink); color:var(--bg)}
+.label{font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:600}
+
+/* сегодня */
+.today-grid{display:grid; grid-template-columns:1.3fr 1fr; gap:18px}
+.plan{list-style:none; margin:0; padding:0; display:grid; gap:8px}
+.plan button{width:100%; display:grid; grid-template-columns:28px 1fr auto; gap:12px; align-items:center; text-align:left; border:1px solid var(--line); background:var(--surface); border-radius:var(--r); padding:12px 14px}
+.plan button:hover{border-color:var(--accent)}
+.tick{width:24px; height:24px; border-radius:50%; border:2px solid var(--line); display:grid; place-items:center; font-size:13px; color:transparent}
+.done .tick{background:var(--ok); border-color:var(--ok); color:#fff}
+.plan small{display:block; color:var(--muted)}
+.plan .cnt{font-variant-numeric:tabular-nums; color:var(--muted); font-size:14px}
+.stats{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.stat{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:12px 14px}
+.stat b{display:block; font-family:var(--display); font-size:30px; font-weight:400; font-variant-numeric:tabular-nums; line-height:1.1}
+.stat span{font-size:13px; color:var(--muted)}
+.weak{display:flex; gap:6px; flex-wrap:wrap; margin-top:6px}
+.chip{font-size:13px; padding:3px 9px; border-radius:999px; background:var(--surface-2)}
+.chip.bad{background:var(--bad-soft); color:var(--bad)}
+.chip.ok{background:var(--ok-soft); color:var(--ok)}
+.chip.now{background:var(--accent-soft); color:var(--accent); font-weight:600}
+.note-card{margin-top:18px; border-left:3px solid var(--warn); background:var(--warn-soft); padding:12px 16px; border-radius:0 var(--r) var(--r) 0; max-width:70ch}
+
+/* нотный стан */
+.staff{display:block; width:100%; height:auto; color:var(--ink)}
+.staff .sl{stroke:currentColor; stroke-width:1.1}
+.staff .ll{stroke:currentColor; stroke-width:1.3}
+.staff .clef{font-family:var(--music); fill:currentColor}
+.staff .nh{fill:none; stroke:currentColor; stroke-width:2.4}
+.staff .nh.ok{stroke:var(--ok)} .staff .nh.bad{stroke:var(--bad)}
+.staff .lbl{font:12px var(--body); fill:var(--muted); text-anchor:middle}
+.trainer{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:18px; align-items:start}
+.stage{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:14px 18px 18px}
+.stage .staff{max-width:460px; margin:0 auto}
+.fb{min-height:1.6em; text-align:center; font-weight:500; margin-top:4px}
+.fb.ok{color:var(--ok)} .fb.bad{color:var(--bad)}
+.names{display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-top:12px}
+.names button{border:1px solid var(--line); background:var(--surface); border-radius:8px; padding:9px 0; font-weight:500}
+.names button:hover{border-color:var(--accent)}
+.side{display:grid; gap:14px}
+.side .panel{padding:14px 16px}
+.meter{height:6px; border-radius:3px; background:var(--surface-2); overflow:hidden; margin-top:6px}
+.meter i{display:block; height:100%; background:var(--accent)}
+.kv{display:grid; grid-template-columns:1fr auto; gap:4px 12px; font-size:14px; font-variant-numeric:tabular-nums}
+.kv dt{color:var(--muted)} .kv dd{margin:0; text-align:right}
+
+/* слух */
+.iv-grid{display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin-top:14px}
+.iv-grid button{border:1px solid var(--line); background:var(--surface); border-radius:8px; padding:8px 0 6px; line-height:1.2}
+.iv-grid button small{display:block; font-size:10.5px; color:var(--muted)}
+.iv-grid button:disabled{opacity:.35; cursor:default}
+.iv-grid button.ok{background:var(--ok-soft); border-color:var(--ok)}
+.iv-grid button.bad{background:var(--bad-soft); border-color:var(--bad)}
+.iv-set{display:grid; grid-template-columns:repeat(3,1fr); gap:4px 10px; font-size:14px}
+.iv-stat{display:grid; grid-template-columns:34px 1fr 64px; gap:8px; align-items:center; font-size:13px; font-variant-numeric:tabular-nums}
+.iv-stat .meter{margin:0}
+.iv-stat .meter i{background:var(--ok)}
+
+/* уроки */
+.lessons{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:10px}
+.lesson-card{width:100%; text-align:left; background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:14px 16px; display:grid; gap:4px; height:100%}
+.lesson-card:hover:not(:disabled){border-color:var(--accent)}
+.lesson-card:disabled{cursor:default; background:transparent; border-style:dashed}
+.lesson-card .n{font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:600}
+.lesson-card h3{font-size:21px}
+.lesson-card .st{justify-self:start}
+.lesson{max-width:760px}
+.lesson .body{max-width:65ch}
+.lesson .body p{margin:0 0 12px}
+.ill{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:8px 12px; margin:6px 0 16px; max-width:480px}
+.task{background:var(--surface); border:1px solid var(--accent); border-radius:var(--r); padding:16px 18px; margin-top:18px}
+.task h3{font-size:22px; margin-bottom:6px}
+.task .staff{max-width:360px}
+.chips{display:flex; gap:6px; flex-wrap:wrap; margin-top:10px}
+
+/* пение */
+.sung{text-align:center; margin-top:14px}
+.sung-name{font-family:var(--display); font-size:40px; line-height:1.15; min-height:1.15em; font-variant-numeric:tabular-nums}
+.gauge{display:block; width:100%; max-width:300px; margin:4px auto 0}
+.gauge .g-ok{fill:var(--ok-soft)}
+.gauge .g-axis{stroke:var(--line); stroke-width:2}
+.gauge .g-tick{stroke:var(--muted); stroke-width:1}
+.gauge .g-lbl{font:11px var(--body); fill:var(--muted)}
+.gauge .g-needle{stroke:var(--accent); stroke-width:3; stroke-linecap:round}
+.gauge .g-needle.ok{stroke:var(--ok)}
+.target-big{text-align:center; font-family:var(--display); font-size:30px}
+.target-big small{display:block; font-family:var(--body); font-size:13px; color:var(--muted)}
+
+/* клавиатура: секция */
+.metro{display:grid; gap:14px; max-width:520px}
+.beats{display:flex; gap:10px}
+.beats i{width:22px; height:22px; border-radius:50%; background:var(--surface-2); border:1px solid var(--line); transition:background .05s}
+.beats i.on{background:var(--accent)} .beats i.on.acc{background:var(--bad)}
+.bpm{font-family:var(--display); font-size:44px; font-variant-numeric:tabular-nums; line-height:1}
+
+/* документы */
+.docs{display:grid; gap:14px}
+.doc-card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:20px 22px; display:grid; gap:8px}
+.doc-card h2{font-size:25px}
+.doc-card p{margin:0; color:var(--muted); max-width:70ch}
+.doc-card .row{margin-top:6px}
+.doc-card .upd{font-size:13px; color:var(--muted); font-variant-numeric:tabular-nums}
+.rd{font-size:13px; font-weight:600}
+.rd.no{color:var(--bad)} .rd.yes{color:var(--ok)}
+.reader-bar{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px}
+.doc{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:22px 26px; max-width:820px}
+.doc h1{font-size:32px; margin-bottom:4px}
+.doc h2{font-size:23px; margin:22px 0 8px}
+.doc h3{font-size:19px; margin:16px 0 6px}
+.doc p, .doc ul, .doc ol{max-width:68ch; margin:0 0 10px}
+.doc li{margin-bottom:4px}
+.doc .meta{color:var(--muted); font-size:14px}
+.tbl{overflow-x:auto; margin:6px 0 12px}
+.tbl table{border-collapse:collapse; width:100%; min-width:520px; font-size:14.5px}
+.tbl th, .tbl td{border-bottom:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top}
+.tbl th{font-size:12px; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); font-weight:600}
+.st{display:inline-block; font-size:12px; font-weight:600; padding:2px 8px; border-radius:999px; white-space:nowrap}
+.st-done{background:var(--ok-soft); color:var(--ok)}
+.st-work{background:var(--accent-soft); color:var(--accent)}
+.st-plan{background:var(--surface-2); color:var(--muted)}
+.st-q{background:var(--warn-soft); color:var(--warn)}
+.st-hold{background:var(--hold-soft); color:var(--hold)}
+.log{font-size:14px}
+kbd{font:600 12px var(--body); border:1px solid var(--line); border-bottom-width:2px; border-radius:4px; padding:1px 5px; background:var(--surface-2)}
+code{font-size:.9em; background:var(--surface-2); padding:1px 5px; border-radius:4px}
+.pdf-src{position:absolute; left:-10000px; top:0; width:720px; background:#fff; color:#111; border:0; border-radius:0; padding:0;
+  --ink:#111; --muted:#555; --line:#ccc; --surface:#fff; --surface-2:#eee; --ok:#1d6b40; --ok-soft:#dcefe3; --accent:#2C4AA6; --accent-soft:#dde3f5; --warn:#8a5a12; --warn-soft:#f4e8cf; --hold:#55508a; --hold-soft:#e5e3f2; --bad:#a33}
+.pdf-src .tbl{overflow:visible} .pdf-src tr{page-break-inside:avoid}
+
+/* нижняя клавиатура */
+.dock{position:sticky; bottom:0; z-index:15; background:var(--bg); border-top:1px solid var(--line); padding-bottom:env(safe-area-inset-bottom,0px)}
+.dock-info{display:flex; gap:14px; flex-wrap:wrap; align-items:center; justify-content:space-between; font-size:13px; color:var(--muted); padding-block:6px}
+.kb-wrap{overflow-x:auto; padding-bottom:8px; overscroll-behavior-x:contain}
+.kb{--kw:34px; position:relative; height:150px; width:calc(29 * var(--kw)); display:flex; user-select:none; -webkit-user-select:none; touch-action:pan-x; margin:0 auto}
+.wk{flex:0 0 var(--kw); height:100%; background:#FBFBF8; border:1px solid #2B2D33; border-left-width:0; border-radius:0 0 5px 5px; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; padding:0 0 7px; font-size:11px; line-height:1.15; color:#50555F; box-shadow:inset 0 -5px 0 #E6E6E0}
+.wk:first-child{border-left-width:1px}
+.wk .oc{font-size:9.5px; color:#8A8F99}
+.bk{position:absolute; top:0; width:calc(var(--kw) * .62); height:62%; background:#1C1D21; border-radius:0 0 4px 4px; z-index:2; box-shadow:inset 0 -4px 0 #3A3C43}
+.wk.down{background:#D6DEF5} .bk.down{background:#3C4E86}
+.wk.ok{background:#BFE6CD} .bk.ok{background:#2E7A4E}
+.wk.bad{background:#F4C6BF} .bk.bad{background:#A8392E}
+.wk.mark{background:#C9D4F4} .bk.mark{background:#34509E}
+.wk.hint, .bk.hint{animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:inset 0 0 0 3px #2C4AA6, inset 0 -5px 0 #E6E6E0}}
+body:not(.with-kb) .dock{display:none}
+
+.toast{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(20px + env(safe-area-inset-bottom,0px)); background:var(--ink); color:var(--bg); padding:10px 16px; border-radius:8px; z-index:50; max-width:calc(100% - 32px); font-size:14px}
+body.with-kb .toast{bottom:calc(210px + env(safe-area-inset-bottom,0px))}
+
+@media (max-width:760px){
+  .today-grid, .trainer{grid-template-columns:1fr}
+  .iv-grid{grid-template-columns:repeat(4,1fr)}
+  .sec-head h1{font-size:28px}
+  .brand{font-size:22px}
+  .doc{padding:18px}
+  .kb{--kw:30px; height:130px}
+  body.with-kb .toast{bottom:calc(190px + env(safe-area-inset-bottom,0px))}
+}
+@media (prefers-reduced-motion: reduce){ .wk.hint, .bk.hint{animation:none; outline:3px solid #2C4AA6; outline-offset:-3px} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#today" data-go="today"><span class="clef" aria-hidden="true">𝄞</span>Клавир</a>
+    <nav class="tabs" aria-label="Разделы">
+      <button class="tab" data-go="today">Сегодня</button>
+      <button class="tab" data-go="lessons">Уроки</button>
+      <button class="tab" data-go="notes">Ноты</button>
+      <button class="tab" data-go="ear">Слух</button>
+      <button class="tab" data-go="sing">Пение</button>
+      <button class="tab" data-go="keys">Клавиатура</button>
+      <button class="tab" data-go="docs">Документы<span class="badge" id="docs-badge" hidden></span></button>
+    </nav>
+    <button class="gear" id="gear" aria-expanded="false" aria-controls="settings">Настройки</button>
+  </div>
+  <div class="wrap">
+    <div id="settings" class="panel" hidden>
+      <div class="grid">
+        <fieldset>
+          <legend>Названия нот</legend>
+          <label class="opt"><input type="radio" name="names" id="names-ru" value="ru"> до, ре, ми</label>
+          <label class="opt"><input type="radio" name="names" id="names-lat" value="lat"> C, D, E</label>
+        </fieldset>
+        <fieldset>
+          <legend>Подписи на клавишах</legend>
+          <label class="opt"><input type="radio" name="labels" id="labels-c" value="c"> только «до»</label>
+          <label class="opt"><input type="radio" name="labels" id="labels-all" value="all"> все белые</label>
+          <label class="opt"><input type="radio" name="labels" id="labels-none" value="none"> без подписей</label>
+        </fieldset>
+        <fieldset>
+          <legend>Громкость</legend>
+          <input type="range" id="vol" min="0" max="1" step="0.05" aria-label="Громкость">
+          <legend style="margin-top:10px">Прогресс</legend>
+          <span id="store-state" class="muted" style="font-size:14px">Проверяю хранилище…</span>
+          <button class="btn" id="reset" style="justify-self:start; margin-top:4px">Сбросить прогресс</button>
+        </fieldset>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- СЕГОДНЯ -->
+  <section class="sec" id="sec-today" hidden>
+    <div class="sec-head"><h1 id="today-title">Сегодня</h1><button class="help" data-help="today" aria-expanded="false" aria-label="Подсказка">?</button></div>
+    <div class="hint" data-hint="today" hidden></div>
+    <p class="lead">Занятие на 20–30 минут. Пункты отмечаются сами, когда задание выполнено.</p>
+    <div class="today-grid">
+      <div>
+        <div class="label" style="margin-bottom:8px">План на сегодня</div>
+        <ul class="plan" id="plan"></ul>
+        <div class="note-card">
+          <b>Инструмента пока нет.</b> Все задания выполняются экранной клавиатурой или клавиатурой компьютера. Какой инструмент выбрать — в документе <a href="#docs" data-doc="instrument">«Инструмент: что купить»</a>.
+        </div>
+      </div>
+      <div>
+        <div class="label" style="margin-bottom:8px">Прогресс</div>
+        <div class="stats" id="stats"></div>
+        <div class="panel" style="margin-top:10px; padding:12px 14px">
+          <div class="label">Чаще всего ошибки</div>
+          <div class="weak" id="weak"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- УРОКИ -->
+  <section class="sec" id="sec-lessons" hidden>
+    <div id="lessons-list">
+      <div class="sec-head"><h1>Уроки</h1><button class="help" data-help="lessons" aria-expanded="false" aria-label="Подсказка">?</button></div>
+      <div class="hint" data-hint="lessons" hidden></div>
+      <p class="lead">Нотная грамота по порядку музыкальной школы. В конце каждого урока — задание на клавиатуре.</p>
+      <ul class="lessons" id="lessons"></ul>
+    </div>
+    <div id="lesson-view" hidden></div>
+  </section>
+
+  <!-- НОТЫ -->
+  <section class="sec" id="sec-notes" hidden>
+    <div class="sec-head"><h1>Чтение нот</h1><button class="help" data-help="notes" aria-expanded="false" aria-label="Подсказка">?</button></div>
+    <div class="hint" data-hint="notes" hidden></div>
+    <div class="row" style="margin-bottom:14px">
+      <div class="seg" role="group" aria-label="Ключ" id="nt-clef">
+        <button data-v="treble">Скрипичный</button><button data-v="bass">Басовый</button><button data-v="both">Оба</button>
+      </div>
+      <div class="seg" role="group" aria-label="Диапазон" id="nt-range">
+        <button data-v="staff">На линейках</button><button data-v="ext">С добавочными</button>
+      </div>
+    </div>
+    <div class="trainer">
+      <div class="stage">
+        <div id="nt-staff"></div>
+        <div class="fb" id="nt-fb" aria-live="polite">Нажмите клавишу, которая соответствует ноте.</div>
+        <div class="names" id="nt-names"></div>
+      </div>
+      <div class="side">
+        <div class="panel">
+          <div class="label">Задание дня</div>
+          <div style="font-variant-numeric:tabular-nums; margin-top:4px"><b id="nt-day">0</b> из 30 нот</div>
+          <div class="meter"><i id="nt-day-bar" style="width:0"></i></div>
+        </div>
+        <div class="panel">
+          <dl class="kv" id="nt-kv"></dl>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- СЛУХ -->
+  <section class="sec" id="sec-ear" hidden>
+    <div class="sec-head"><h1>Интервалы на слух</h1><button class="help" data-help="ear" aria-expanded="false" aria-label="Подсказка">?</button></div>
+    <div class="hint" data-hint="ear" hidden></div>
+    <div class="row" style="margin-bottom:14px">
+      <div class="seg" role="group" aria-label="Как звучит" id="ear-mode">
+        <button data-v="up">Вверх</button><button data-v="down">Вниз</button><button data-v="harm">Вместе</button>
+      </div>
+    </div>
+    <div class="trainer">
+      <div class="stage">
+        <div class="row" style="justify-content:center">
+          <button class="btn primary" id="ear-play">Сыграть</button>
+          <button class="btn" id="ear-next" disabled>Дальше</button>
+          <button class="btn" id="ear-show" disabled>Показать ответ</button>
+        </div>
+        <div class="fb" id="ear-fb" aria-live="polite" style="margin-top:12px">Нажмите «Сыграть» и выберите интервал.</div>
+        <div class="iv-grid" id="ear-btns"></div>
+      </div>
+      <div class="side">
+        <div class="panel">
+          <div class="label">Задание дня</div>
+          <div style="font-variant-numeric:tabular-nums; margin-top:4px"><b id="ear-day">0</b> из 10 интервалов</div>
+          <div class="meter"><i id="ear-day-bar" style="width:0"></i></div>
+        </div>
+        <div class="panel">
+          <div class="label" style="margin-bottom:6px">Какие интервалы спрашивать</div>
+          <div class="iv-set" id="ear-set"></div>
+        </div>
+        <div class="panel">
+          <div class="label" style="margin-bottom:6px">Точность по интервалам</div>
+          <div id="ear-stats" style="display:grid; gap:5px"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ПЕНИЕ -->
+  <section class="sec" id="sec-sing" hidden>
+    <div class="sec-head"><h1>Пение нот</h1><button class="help" data-help="sing" aria-expanded="false" aria-label="Подсказка">?</button></div>
+    <div class="hint" data-hint="sing" hidden></div>
+    <div class="row" style="margin-bottom:14px">
+      <div class="seg" role="group" aria-label="Упражнение" id="sing-mode">
+        <button data-v="ear">Спеть услышанное</button><button data-v="sheet">С листа</button><button data-v="tuner">Тюнер</button>
+      </div>
+      <div class="seg" role="group" aria-label="Голос" id="sing-voice">
+        <button data-v="low">Низкий голос</button><button data-v="high">Высокий голос</button>
+      </div>
+    </div>
+    <div class="trainer">
+      <div class="stage">
+        <div class="row" style="justify-content:center">
+          <button class="btn primary" id="mic-btn">Включить микрофон</button>
+          <button class="btn" id="sing-ref" disabled>Сыграть ноту</button>
+          <button class="btn" id="sing-skip" disabled>Пропустить</button>
+        </div>
+        <p class="muted" id="mic-state" style="text-align:center; font-size:14px; margin:8px 0 0">Микрофон выключен.</p>
+        <div id="sing-target" style="margin-top:10px"></div>
+        <div class="sung">
+          <div class="label">Вы поёте</div>
+          <div class="sung-name" id="sung-name">—</div>
+          <svg class="gauge" viewBox="0 0 300 44" aria-hidden="true">
+            <rect class="g-ok" x="126" y="8" width="48" height="18" rx="3"/>
+            <line class="g-axis" x1="10" x2="290" y1="17" y2="17"/>
+            <line class="g-tick" x1="150" x2="150" y1="4" y2="30"/>
+            <text class="g-lbl" x="10" y="42">−50</text><text class="g-lbl" x="150" y="42" text-anchor="middle">0</text><text class="g-lbl" x="290" y="42" text-anchor="end">+50 центов</text>
+            <line class="g-needle" id="g-needle" x1="150" x2="150" y1="2" y2="32" hidden/>
+          </svg>
+          <div class="meter" style="max-width:300px; margin:6px auto 0"><i id="hold-bar" style="width:0; background:var(--ok)"></i></div>
+        </div>
+        <div class="fb" id="sing-fb" aria-live="polite"></div>
+      </div>
+      <div class="side">
+        <div class="panel">
+          <div class="label">Задание дня</div>
+          <div style="font-variant-numeric:tabular-nums; margin-top:4px"><b id="sing-day">0</b> из 10 нот</div>
+          <div class="meter"><i id="sing-day-bar" style="width:0"></i></div>
+        </div>
+        <div class="panel">
+          <dl class="kv" id="sing-kv"></dl>
+        </div>
+        <div class="panel" style="font-size:14px">
+          <div class="label" style="margin-bottom:4px">Как петь</div>
+          Пойте на слог «ля» или «а», ровно и не громко. Наденьте наушники, чтобы микрофон не слышал звук сайта.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- КЛАВИАТУРА -->
+  <section class="sec" id="sec-keys" hidden>
+    <div class="sec-head"><h1>Клавиатура и метроном</h1><button class="help" data-help="keys" aria-expanded="false" aria-label="Подсказка">?</button></div>
+    <div class="hint" data-hint="keys" hidden></div>
+    <div class="trainer">
+      <div class="panel metro">
+        <div class="label">Метроном</div>
+        <div class="row" style="justify-content:space-between">
+          <div><span class="bpm" id="bpm-val">80</span> <span class="muted">ударов в минуту</span></div>
+          <button class="btn primary" id="metro-toggle">Включить</button>
+        </div>
+        <input type="range" id="bpm" min="40" max="200" step="1" value="80" aria-label="Темп">
+        <div class="row">
+          <span class="muted">Размер</span>
+          <div class="seg" role="group" aria-label="Размер" id="metro-meter">
+            <button data-v="2">2/4</button><button data-v="3">3/4</button><button data-v="4">4/4</button>
+          </div>
+        </div>
+        <div class="beats" id="beats"></div>
+      </div>
+      <div class="side">
+        <div class="panel">
+          <div class="label">Последняя нота</div>
+          <div id="last-note" style="font-family:var(--display); font-size:28px; margin-top:4px">—</div>
+        </div>
+        <div class="panel">
+          <div class="label">MIDI-инструмент</div>
+          <p id="midi-state" class="muted" style="margin:6px 0 10px; font-size:14px">Не подключён.</p>
+          <button class="btn" id="midi-btn">Подключить MIDI</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ДОКУМЕНТЫ -->
+  <section class="sec" id="sec-docs" hidden>
+    <div id="docs-listview">
+      <div class="sec-head"><h1>План проекта и документы</h1><button class="help" data-help="docs" aria-expanded="false" aria-label="Подсказка">?</button></div>
+      <div class="hint" data-hint="docs" hidden></div>
+      <div class="docs" id="docs-list" style="margin-top:14px"><p class="muted">Загружаю список…</p></div>
+    </div>
+    <div id="docs-reader" hidden>
+      <div class="reader-bar">
+        <button class="btn" id="rd-back">← Все документы</button>
+        <button class="btn" id="rd-pdf">PDF</button>
+        <button class="btn" id="rd-read">Отметить прочитанным</button>
+      </div>
+      <article class="doc" id="rd-body"></article>
+    </div>
+  </section>
+</main>
+
+<div class="dock" aria-label="Клавиатура">
+  <div class="wrap dock-info">
+    <span id="kb-info">Клавиши компьютера A–K · октава: первая · Z/X — сдвиг</span>
+    <span id="kb-src"></span>
+  </div>
+  <div class="kb-wrap" id="kb-wrap"><div class="kb" id="kb"></div></div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+/* ---------- ноты и названия ---------- */
+const LOW = 36, HIGH = 84; // до большой — до третьей октавы
+const PC_LETTER = [0, null, 1, null, 2, 3, null, 4, null, 5, null, 6];
+const NAMES = {
+  ru: ['до', 'до♯', 'ре', 'ре♯', 'ми', 'фа', 'фа♯', 'соль', 'соль♯', 'ля', 'ля♯', 'си'],
+  lat: ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B']
+};
+const IN_CLAUDE = !!(window.claude && window.claude.use); // открыт ли сайт внутри claude.ai
+const OCT_GEN = { 0: 'субконтроктавы', 7: 'четвёртой октавы', 8: 'пятой октавы', 1: 'контроктавы',2: 'большой октавы', 3: 'малой октавы', 4: 'первой октавы', 5: 'второй октавы', 6: 'третьей октавы' };
+const OCT_NOM = { 2: 'большая', 3: 'малая', 4: 'первая', 5: 'вторая', 6: 'третья' };
+const OCT_TAG = { 2: 'бол.', 3: 'мал.', 4: '1', 5: '2', 6: '3' };
+const WHITE_PCS = [0, 2, 4, 5, 7, 9, 11];
+const isWhite = m => PC_LETTER[m % 12] !== null;
+const octOf = m => Math.floor(m / 12) - 1;
+const dia = m => octOf(m) * 7 + PC_LETTER[m % 12];
+const nm = m => NAMES[S.settings.names][m % 12];
+const fullName = m => S.settings.names === 'ru' ? `${nm(m)} ${OCT_GEN[octOf(m)]}` : `${nm(m)}${octOf(m)}`;
+
+/* ---------- состояние и хранение ---------- */
+const KEY = 'klavir-v1';
+const DEF = () => ({
+  v: 1, updatedAt: 0,
+  settings: { names: 'ru', labels: 'c', vol: 0.8 },
+  notes: {}, ear: {}, sing: {}, lessons: {}, days: {}, docsRead: {},
+  noteCfg: { clef: 'treble', range: 'staff' },
+  earCfg: { set: [4, 5, 7, 12], mode: 'up' },
+  singCfg: { mode: 'ear', voice: 'low' },
+  metro: { bpm: 80, beats: 4 }
+});
+function merge(base, o) {
+  for (const k in o) {
+    const b = base[k], v = o[k];
+    if (v && typeof v === 'object' && !Array.isArray(v) && b && typeof b === 'object' && !Array.isArray(b)) base[k] = merge(b, v);
+    else base[k] = v;
+  }
+  return base;
+}
+function loadLocal() {
+  let d = DEF();
+  try { const raw = localStorage.getItem(KEY); if (raw) d = merge(d, JSON.parse(raw)); } catch (e) {}
+  return d;
+}
+let S = loadLocal();
+let dbRef = null, saveTimer = null;
+function save() {
+  S.updatedAt = Date.now();
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+  if (dbRef) {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => { dbRef.set(JSON.parse(JSON.stringify(S))).catch(() => setStore('local')); }, 1200);
+  }
+}
+function setStore(kind) {
+  $('#store-state').textContent = kind === 'cloud'
+    ? 'Сохраняется в вашей учётной записи и виден на всех устройствах.'
+    : IN_CLAUDE ? 'Сохраняется только в этом браузере.'
+    : 'Сохраняется только в этом браузере. Общий прогресс для всех устройств появится с сервером в Yandex Cloud.';
+}
+async function initCloud() {
+  if (!window.claude || !window.claude.use) { setStore('local'); return; }
+  try {
+    const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
+    const id = user ? await user.id() : null;
+    if (!db || !id) { setStore('local'); return; }
+    const ref = db.doc('data/users/' + id + '/progress');
+    const snap = await ref.get();
+    const remote = snap.exists ? JSON.parse(JSON.stringify(snap.data())) : null;
+    dbRef = ref;
+    if (remote && (remote.updatedAt || 0) > S.updatedAt) {
+      S = merge(DEF(), remote);
+      try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+      applySettings(); renderSection();
+    } else if (S.updatedAt) {
+      ref.set(JSON.parse(JSON.stringify(S))).catch(() => {});
+    }
+    setStore('cloud');
+  } catch (e) { setStore('local'); }
+}
+
+const fmtDate = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const todayKey = () => fmtDate(new Date());
+function day() {
+  const k = todayKey();
+  if (!S.days[k]) S.days[k] = { notes: 0, ear: 0, sing: 0, lessons: [] };
+  if (S.days[k].sing == null) S.days[k].sing = 0;
+  return S.days[k];
+}
+function dayRO() { const d = S.days[todayKey()] || { notes: 0, ear: 0, lessons: [] }; return { sing: 0, ...d }; }
+function streak() {
+  const has = d => { const x = S.days[fmtDate(d)]; return x && (x.notes || x.ear || x.sing || (x.lessons && x.lessons.length)); };
+  const d = new Date(); let n = 0;
+  if (!has(d)) d.setDate(d.getDate() - 1);
+  while (has(d)) { n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+
+/* ---------- звук ---------- */
+let AC = null, master = null;
+function ac() {
+  if (!AC) {
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    const comp = AC.createDynamicsCompressor();
+    comp.threshold.value = -14; comp.ratio.value = 4;
+    master = AC.createGain(); master.gain.value = S.settings.vol;
+    master.connect(comp); comp.connect(AC.destination);
+  }
+  if (AC.state === 'suspended') AC.resume();
+  return AC;
+}
+const freq = m => 440 * Math.pow(2, (m - 69) / 12);
+function voice(m, when, vel = 0.75) {
+  const a = ac(); const t = when ?? a.currentTime; const f = freq(m);
+  const out = a.createGain(); out.gain.setValueAtTime(1, t);
+  const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = Math.min(14000, f * (5 + vel * 10)); lp.Q.value = 0.3;
+  out.connect(lp); lp.connect(master);
+  const tau = 1.9 * Math.pow(261.6 / f, 0.55);
+  const parts = [1, .55, .32, .17, .09, .05];
+  const oscs = [];
+  parts.forEach((amp, i) => {
+    const n = i + 1; const fn = f * n * Math.sqrt(1 + 0.0004 * n * n);
+    if (fn > 16000) return;
+    const o = a.createOscillator(); o.type = 'sine'; o.frequency.value = fn;
+    const g = a.createGain(); const peak = amp * vel * 0.22;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(peak, t + 0.005);
+    g.gain.setTargetAtTime(0, t + 0.005, tau / Math.pow(n, 0.7));
+    o.connect(g); g.connect(out); o.start(t); o.stop(t + 9); oscs.push(o);
+  });
+  return {
+    stop(at) {
+      const s = Math.max(at ?? a.currentTime, t + 0.03);
+      out.gain.setTargetAtTime(0, s, 0.07);
+      oscs.forEach(o => { try { o.stop(s + 0.7); } catch (e) {} });
+    }
+  };
+}
+function playNote(m, dur = 0.9, when) { const a = ac(); const t = when ?? a.currentTime; voice(m, t).stop(t + dur); }
+
+/* ---------- экранная клавиатура ---------- */
+const kb = $('#kb');
+const keyEl = {};
+function buildKeyboard() {
+  kb.innerHTML = '';
+  let wi = 0;
+  for (let m = LOW; m <= HIGH; m++) {
+    const el = document.createElement('div');
+    el.dataset.m = m;
+    el.setAttribute('role', 'button');
+    el.setAttribute('aria-label', fullName(m));
+    if (isWhite(m)) { el.className = 'wk'; wi++; }
+    else { el.className = 'bk'; el.style.left = `calc(${wi} * var(--kw) - var(--kw) * .31)`; }
+    kb.appendChild(el); keyEl[m] = el;
+  }
+  labelKeys();
+}
+function labelKeys() {
+  for (let m = LOW; m <= HIGH; m++) {
+    const el = keyEl[m]; if (!isWhite(m)) continue;
+    const show = S.settings.labels === 'all' || (S.settings.labels === 'c' && m % 12 === 0);
+    if (!show) { el.innerHTML = ''; continue; }
+    const tag = S.settings.names === 'ru' ? OCT_TAG[octOf(m)] : octOf(m);
+    el.innerHTML = `<span>${nm(m)}</span>` + (m % 12 === 0 ? `<span class="oc">${tag}</span>` : '');
+    el.setAttribute('aria-label', fullName(m));
+  }
+}
+const flashTimers = {};
+function flash(m, cls, ms = 450) {
+  const el = keyEl[m]; if (!el) return;
+  el.classList.add(cls);
+  clearTimeout(flashTimers[m + cls]);
+  flashTimers[m + cls] = setTimeout(() => el.classList.remove(cls), ms);
+}
+function clearMarks(cls) { $$('.' + cls, kb).forEach(e => e.classList.remove(cls)); }
+function scrollKbTo(m) {
+  const el = keyEl[m]; const w = $('#kb-wrap'); if (!el) return;
+  const x = el.offsetLeft + el.offsetWidth / 2 - w.clientWidth / 2;
+  w.scrollTo({ left: Math.max(0, x), behavior: 'smooth' });
+}
+
+const active = {};
+let handler = null;
+function press(m, src) {
+  if (m < LOW - 24 || m > HIGH + 24) return;
+  if (active[m]) active[m].stop();
+  active[m] = voice(m);
+  keyEl[m] && keyEl[m].classList.add('down');
+  $('#last-note').textContent = fullName(m);
+  if (src === 'midi') $('#kb-src').textContent = 'Ввод: MIDI';
+  if (handler) handler(m);
+}
+function release(m) {
+  if (active[m]) { active[m].stop(); delete active[m]; }
+  keyEl[m] && keyEl[m].classList.remove('down');
+}
+const pointerKey = {};
+kb.addEventListener('pointerdown', e => {
+  const el = e.target.closest('[data-m]'); if (!el) return;
+  const m = +el.dataset.m; pointerKey[e.pointerId] = m; press(m, 'screen');
+});
+const up = e => { const m = pointerKey[e.pointerId]; if (m != null) { release(m); delete pointerKey[e.pointerId]; } };
+kb.addEventListener('pointerup', up); kb.addEventListener('pointercancel', up); kb.addEventListener('pointerleave', up);
+
+/* клавиатура компьютера */
+const KMAP = { a: 0, w: 1, s: 2, e: 3, d: 4, f: 5, t: 6, g: 7, y: 8, h: 9, u: 10, j: 11, k: 12, o: 13, l: 14 };
+const CODE = { KeyA: 'a', KeyW: 'w', KeyS: 's', KeyE: 'e', KeyD: 'd', KeyF: 'f', KeyT: 't', KeyG: 'g', KeyY: 'y', KeyH: 'h', KeyU: 'u', KeyJ: 'j', KeyK: 'k', KeyO: 'o', KeyL: 'l', KeyZ: 'z', KeyX: 'x' };
+let kbOct = 4;
+const held = {};
+function kbInfo() {
+  const o = S.settings.names === 'ru' ? OCT_NOM[kbOct] : String(kbOct);
+  $('#kb-info').textContent = `Клавиши компьютера A–K · октава: ${o} · Z/X — сдвиг`;
+}
+function typing(e) { const t = e.target; return t && (t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || (t.tagName === 'INPUT' && !['range', 'checkbox', 'radio'].includes(t.type))); }
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey || e.altKey || typing(e)) return;
+  if (!document.body.classList.contains('with-kb')) return;
+  if (curSec === 'ear' && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); if (e.repeat) return; if (e.key === ' ') earPlay(); else if (!$('#ear-next').disabled) earNext(); return; }
+  const k = CODE[e.code]; if (!k) return;
+  e.preventDefault(); if (e.repeat) return;
+  if (k === 'z') { kbOct = Math.max(2, kbOct - 1); kbInfo(); scrollKbTo(kbOct * 12 + 12 + 5); return; }
+  if (k === 'x') { kbOct = Math.min(5, kbOct + 1); kbInfo(); scrollKbTo(kbOct * 12 + 12 + 5); return; }
+  const m = (kbOct + 1) * 12 + KMAP[k];
+  held[e.code] = m; press(m, 'pc');
+});
+document.addEventListener('keyup', e => { const m = held[e.code]; if (m != null) { release(m); delete held[e.code]; } });
+window.addEventListener('blur', () => { Object.keys(held).forEach(c => { release(held[c]); delete held[c]; }); });
+
+/* MIDI */
+$('#midi-btn').addEventListener('click', async () => {
+  const st = $('#midi-state');
+  if (!navigator.requestMIDIAccess) { st.textContent = 'Этот браузер не поддерживает MIDI. Нужен Chrome или Edge на компьютере либо Chrome на Android.'; return; }
+  try {
+    const acc = await navigator.requestMIDIAccess();
+    const hook = () => {
+      const names = [];
+      acc.inputs.forEach(inp => {
+        names.push(inp.name);
+        inp.onmidimessage = ev => {
+          const [s, n, v] = ev.data; const c = s & 0xf0;
+          if (c === 0x90 && v > 0) press(n, 'midi');
+          else if (c === 0x80 || (c === 0x90 && v === 0)) release(n);
+        };
+      });
+      st.textContent = names.length ? 'Подключено: ' + names.join(', ') : 'Доступ есть, но инструмент не найден. Подключите его по USB.';
+    };
+    hook(); acc.onstatechange = hook;
+  } catch (err) {
+    st.textContent = IN_CLAUDE
+      ? 'В окне claude.ai браузер закрывает доступ к MIDI. Откройте версию сайта на GitHub Pages — см. документ «Технологии».'
+      : 'Браузер не дал доступ к MIDI. Разрешите его в адресной строке и нажмите кнопку снова.';
+  }
+});
+
+/* ---------- нотный стан ---------- */
+function staffSVG(clef, notes, opt = {}) {
+  const W = opt.w || 240, gap = 10, top = 34, bot = top + 4 * gap, H = 118;
+  const ref = clef === 'treble' ? 30 : 18; // ми первой / соль большой на первой линии
+  let s = `<svg class="staff" viewBox="0 0 ${W} ${H}" role="img" aria-label="${clef === 'treble' ? 'Скрипичный' : 'Басовый'} ключ">`;
+  for (let i = 0; i < 5; i++) s += `<line class="sl" x1="4" x2="${W - 4}" y1="${top + i * gap}" y2="${top + i * gap}"/>`;
+  s += clef === 'treble'
+    ? `<text class="clef" x="8" y="${bot - gap}" font-size="${gap * 4}">𝄞</text>`
+    : `<text class="clef" x="8" y="${top + gap}" font-size="${gap * 4}">𝄢</text>`;
+  const x0 = 70, span = W - x0 - 20;
+  notes.forEach((m, i) => {
+    const x = notes.length === 1 ? x0 + span / 2 : x0 + (span * i) / (notes.length - 1);
+    const pos = dia(m) - ref; const y = bot - pos * gap / 2;
+    for (let p = -2; p >= pos; p -= 2) s += `<line class="ll" x1="${x - 12}" x2="${x + 12}" y1="${bot - p * gap / 2}" y2="${bot - p * gap / 2}"/>`;
+    for (let p = 10; p <= pos; p += 2) s += `<line class="ll" x1="${x - 12}" x2="${x + 12}" y1="${bot - p * gap / 2}" y2="${bot - p * gap / 2}"/>`;
+    const cls = (opt.cls && opt.cls[i]) || '';
+    s += `<ellipse class="nh ${cls}" cx="${x}" cy="${y}" rx="6.4" ry="4.6" transform="rotate(-18 ${x} ${y})"/>`;
+    if (opt.labels) s += `<text class="lbl" x="${x}" y="${H - 4}">${nm(m)}</text>`;
+  });
+  return s + '</svg>';
+}
+
+/* ---------- подсказки ---------- */
+const HINTS = {
+  today: ['Здесь план занятия на день и сводка прогресса. Нажмите пункт плана, чтобы перейти к заданию.',
+    '«Дней подряд» растёт, если заниматься каждый день: достаточно одного выполненного задания.'],
+  lessons: ['Уроки идут в порядке музыкальной школы. Прочитайте объяснение и выполните задание внизу урока на клавиатуре.',
+    'Урок засчитывается, когда задание выполнено. Уроки 5–10 появятся позже — они есть в документе «Учебная программа».'],
+  notes: ['На стане появляется нота. Нажмите эту клавишу (октава важна) или кнопку с названием под станом (октава не важна).',
+    'После двух ошибок нужная клавиша начинает мигать. Ноты, в которых вы ошибались, появляются чаще.',
+    'Клавиши компьютера: A S D F G H J K — белые от «до» до «до», W E T Y U — чёрные, Z и X — октава ниже и выше.'],
+  ear: ['Нажмите «Сыграть» (или пробел) — прозвучат две ноты. Выберите интервал кнопкой. «Дальше» — Enter.',
+    'Справа галочками выбирается, какие интервалы спрашивать. Начните с трёх-четырёх и добавляйте новый, когда точность выше 80%.',
+    'После ответа обе ноты подсвечиваются на клавиатуре — сыграйте их сами, чтобы запомнить звучание.'],
+  sing: ['Нажмите «Включить микрофон» и разрешите доступ. Микрофон работает в версии сайта на GitHub Pages; в окне claude.ai браузер его не даёт.',
+    '«Спеть услышанное»: сайт играет ноту, вы повторяете голосом. «С листа»: нота показана на стане, звук не играет — «Сыграть ноту» подскажет. «Тюнер»: просто показывает, какую ноту вы поёте.',
+    'Нота засчитывается, если держать её около 0,7 секунды с точностью ±40 центов (стрелка в зелёной зоне). Октава не важна: низкий голос может петь на октаву ниже.',
+    'Пойте в наушниках, иначе микрофон услышит звук сайта.'],
+  keys: ['Свободная игра на экранной клавиатуре или клавишами компьютера и метроном.',
+    'Метроном: ползунок задаёт темп, первая доля такта звучит выше. Метроном продолжает звучать в других разделах, пока его не выключить.',
+    'Кнопка «Подключить MIDI» понадобится, когда появится инструмент. В нынешнем окне браузер закрывает доступ к MIDI.'],
+  docs: ['План проекта и остальные документы. «Открыть» — прочитать, «PDF» — сохранить файл (браузер спросит разрешение), «Отметить прочитанным».',
+    'Когда документ обновляется, он снова становится «не прочитан», а у вкладки «Документы» появляется счётчик.']
+};
+$$('[data-hint]').forEach(el => { el.innerHTML = HINTS[el.dataset.hint].map(t => `<p>${t}</p>`).join(''); });
+$$('[data-help]').forEach(b => b.addEventListener('click', () => {
+  const box = $(`[data-hint="${b.dataset.help}"]`, b.closest('.sec'));
+  box.hidden = !box.hidden; b.setAttribute('aria-expanded', String(!box.hidden));
+}));
+
+/* ---------- навигация ---------- */
+const SECS = ['today', 'lessons', 'notes', 'ear', 'sing', 'keys', 'docs'];
+const WITH_KB = ['lessons', 'notes', 'ear', 'sing', 'keys'];
+let curSec = 'today';
+function go(sec) {
+  if (!SECS.includes(sec)) sec = 'today';
+  if (curSec === 'sing' && sec !== 'sing') micOff();
+  curSec = sec;
+  SECS.forEach(s => { $('#sec-' + s).hidden = s !== sec; });
+  $$('.tab').forEach(t => { if (t.dataset.go === sec) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current'); });
+  document.body.classList.toggle('with-kb', WITH_KB.includes(sec));
+  try { history.replaceState(null, '', '#' + sec); } catch (e) {}
+  handler = null; clearMarks('hint'); clearMarks('mark');
+  renderSection();
+  window.scrollTo({ top: 0 });
+}
+function renderSection() {
+  ({ today: renderToday, lessons: renderLessons, notes: enterNotes, ear: enterEar, sing: enterSing, keys: enterKeys, docs: renderDocs })[curSec]();
+}
+$$('[data-go]').forEach(b => b.addEventListener('click', e => { e.preventDefault(); go(b.dataset.go); }));
+
+/* ---------- сегодня ---------- */
+function acc(o) { let s = 0, w = 0; Object.values(o).forEach(x => { s += x.s || 0; w += x.w || 0; }); return s ? Math.round(100 * (s - w) / s) + '%' : '—'; }
+function totalAnswers() { let n = 0; [S.notes, S.ear, S.sing].forEach(o => Object.values(o).forEach(x => n += x.s || 0)); return n; }
+function nextLesson() { return LESSONS.find(l => l.task && !S.lessons[l.id]) || null; }
+function renderToday() {
+  const d = new Date();
+  $('#today-title').textContent = 'Сегодня, ' + d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+  const t = dayRO(); const nl = nextLesson();
+  const lessonDone = (t.lessons || []).length > 0;
+  const items = [
+    { go: 'lessons', lesson: nl && nl.id, done: lessonDone,
+      title: nl ? `Урок ${nl.n}. ${nl.title}` : 'Повторить любой урок',
+      sub: nl ? '5–10 минут' : 'Все доступные уроки пройдены', cnt: lessonDone ? 'пройден' : '' },
+    { go: 'notes', done: t.notes >= 30, title: 'Чтение нот', sub: '30 нот, около 3 минут', cnt: `${Math.min(t.notes, 30)} / 30` },
+    { go: 'ear', done: t.ear >= 10, title: 'Интервалы на слух', sub: '10 заданий', cnt: `${Math.min(t.ear, 10)} / 10` },
+    { go: 'sing', done: t.sing >= 10, title: 'Пение нот', sub: '10 нот голосом, нужен микрофон', cnt: `${Math.min(t.sing, 10)} / 10` }
+  ];
+  $('#plan').innerHTML = items.map((it, i) => `<li><button data-i="${i}" class="${it.done ? 'done' : ''}"><span class="tick">✓</span><span>${it.title}<small>${it.sub}</small></span><span class="cnt">${it.cnt}</span></button></li>`).join('');
+  $$('#plan button').forEach(b => b.addEventListener('click', () => {
+    const it = items[+b.dataset.i]; go(it.go); if (it.lesson) openLesson(it.lesson);
+  }));
+  const doneLessons = Object.keys(S.lessons).length;
+  $('#stats').innerHTML = [
+    [streak(), 'дней подряд'], [totalAnswers(), 'ответов всего'],
+    [acc(S.notes), 'точность: ноты'], [acc(S.ear), 'точность: интервалы'],
+    [`${doneLessons} / ${LESSONS.filter(l => l.task).length}`, 'уроков пройдено'], [todayMinutesText(), 'ответов сегодня']
+  ].map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join('');
+  const weak = [];
+  Object.entries(S.notes).forEach(([k, x]) => { if (x.s >= 3 && x.w) weak.push({ t: `${nm(+k.slice(1))}${k[0] === 't' ? ' 𝄞' : ' 𝄢'} ${octLabel(+k.slice(1))}`, r: x.w / x.s }); });
+  Object.entries(S.ear).forEach(([k, x]) => { if (x.s >= 3 && x.w) weak.push({ t: IV.find(v => v[0] === +k)[1], r: x.w / x.s }); });
+  Object.entries(S.sing).forEach(([k, x]) => { if (x.s >= 3 && x.w) weak.push({ t: `${nm(+k)} ${octLabel(+k)} голосом`, r: x.w / x.s }); });
+  weak.sort((a, b) => b.r - a.r);
+  $('#weak').innerHTML = weak.length ? weak.slice(0, 8).map(w => `<span class="chip bad">${w.t} · ${Math.round(w.r * 100)}%</span>`).join('') : '<span class="muted" style="font-size:14px">Пока мало ответов. Список появится после нескольких занятий.</span>';
+}
+function octLabel(m) { return S.settings.names === 'ru' ? OCT_TAG[octOf(m)] : octOf(m); }
+function todayMinutesText() { const t = dayRO(); return (t.notes || 0) + (t.ear || 0) + (t.sing || 0); }
+
+/* ---------- тренажёр нот ---------- */
+const NT = { target: null, clef: 'treble', wrong: 0, t0: 0, last: null, lock: false, run: 0, times: [] };
+function notePool(clef) {
+  const r = S.noteCfg.range === 'staff' ? (clef === 'treble' ? [64, 77] : [43, 57]) : (clef === 'treble' ? [57, 84] : [36, 64]);
+  const out = []; for (let m = r[0]; m <= r[1]; m++) if (isWhite(m)) out.push(m); return out;
+}
+function pickWeighted(c) { const sum = c.reduce((a, x) => a + x.w, 0); let r = Math.random() * sum; for (const x of c) { r -= x.w; if (r <= 0) return x; } return c[c.length - 1]; }
+function nextNote() {
+  const clefs = S.noteCfg.clef === 'both' ? ['treble', 'bass'] : [S.noteCfg.clef];
+  const cand = [];
+  clefs.forEach(c => notePool(c).forEach(m => {
+    if (NT.last && NT.last.c === c && NT.last.m === m) return;
+    const st = S.notes[c[0] + m] || { s: 0, w: 0 };
+    cand.push({ c, m, w: 1 + 4 * (st.w / (st.s + 1)) + (st.s < 2 ? 0.8 : 0) });
+  }));
+  const p = pickWeighted(cand);
+  NT.target = p.m; NT.clef = p.c; NT.wrong = 0; NT.lock = false; NT.t0 = performance.now(); NT.last = p;
+  clearMarks('hint');
+  drawNote();
+  scrollKbTo(p.m);
+}
+function drawNote(cls) { $('#nt-staff').innerHTML = staffSVG(NT.clef, [NT.target], { w: 260, cls: [cls || ''] }); }
+function renderNoteSide() {
+  const t = dayRO();
+  $('#nt-day').textContent = t.notes; $('#nt-day-bar').style.width = Math.min(100, t.notes / 30 * 100) + '%';
+  const avg = NT.times.length ? (NT.times.reduce((a, b) => a + b, 0) / NT.times.length / 1000).toFixed(1).replace('.', ',') + ' с' : '—';
+  $('#nt-kv').innerHTML = `<dt>Подряд без ошибок</dt><dd>${NT.run}</dd><dt>Среднее время (10 последних)</dt><dd>${avg}</dd><dt>Точность за всё время</dt><dd>${acc(S.notes)}</dd>`;
+}
+function noteAnswer(m, byName) {
+  if (NT.lock || NT.target == null) return;
+  const ok = byName ? m % 12 === NT.target % 12 : m === NT.target;
+  const fb = $('#nt-fb');
+  if (ok) {
+    NT.lock = true;
+    const k = NT.clef[0] + NT.target; const st = S.notes[k] || (S.notes[k] = { s: 0, w: 0 });
+    st.s++; if (NT.wrong) st.w++;
+    const ms = performance.now() - NT.t0; NT.times.push(ms); if (NT.times.length > 10) NT.times.shift();
+    NT.run = NT.wrong ? 0 : NT.run + 1;
+    day().notes++; save();
+    if (byName) playNote(NT.target, 0.7);
+    flash(NT.target, 'ok', 500); drawNote('ok');
+    fb.className = 'fb ok'; fb.textContent = `Верно: ${fullName(NT.target)} · ${(ms / 1000).toFixed(1).replace('.', ',')} с`;
+    renderNoteSide();
+    setTimeout(() => { if (curSec === 'notes') nextNote(); }, 550);
+  } else {
+    NT.wrong++; NT.run = 0;
+    fb.className = 'fb bad';
+    if (!byName) flash(m, 'bad', 500);
+    fb.textContent = byName ? `Это не ${nm(m)}. Попробуйте ещё.` : `Нажата ${fullName(m)}. Попробуйте ещё.`;
+    if (NT.wrong >= 2) { keyEl[NT.target] && keyEl[NT.target].classList.add('hint'); scrollKbTo(NT.target); fb.textContent = `Правильно: ${fullName(NT.target)} — клавиша мигает.`; }
+    renderNoteSide();
+  }
+}
+function segInit(id, get, set) {
+  const g = $('#' + id);
+  const paint = () => $$('button', g).forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === String(get()))));
+  $$('button', g).forEach(b => b.addEventListener('click', () => { set(b.dataset.v); paint(); }));
+  return paint;
+}
+const paintClef = segInit('nt-clef', () => S.noteCfg.clef, v => { S.noteCfg.clef = v; save(); NT.last = null; nextNote(); });
+const paintRange = segInit('nt-range', () => S.noteCfg.range, v => { S.noteCfg.range = v; save(); NT.last = null; nextNote(); });
+function buildNameButtons() {
+  $('#nt-names').innerHTML = WHITE_PCS.map(pc => `<button data-pc="${pc}">${NAMES[S.settings.names][pc]}</button>`).join('');
+  $$('#nt-names button').forEach(b => b.addEventListener('click', () => { ac(); noteAnswer(+b.dataset.pc + 60, true); }));
+}
+function enterNotes() {
+  paintClef(); paintRange(); buildNameButtons();
+  handler = m => noteAnswer(m, false);
+  if (NT.target == null) nextNote(); else { drawNote(); scrollKbTo(NT.target); }
+  renderNoteSide();
+}
+
+/* ---------- слух: интервалы ---------- */
+const IV = [[1, 'м2', 'малая секунда'], [2, 'б2', 'большая секунда'], [3, 'м3', 'малая терция'], [4, 'б3', 'большая терция'], [5, 'ч4', 'чистая кварта'], [6, 'тр', 'тритон'],
+  [7, 'ч5', 'чистая квинта'], [8, 'м6', 'малая секста'], [9, 'б6', 'большая секста'], [10, 'м7', 'малая септима'], [11, 'б7', 'большая септима'], [12, 'ч8', 'октава']];
+const ET = { q: null, wrong: 0, done: false };
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+function earPlay() {
+  ac();
+  if (!ET.q || ET.done) { earNew(); return; }
+  const a = ac(); const t = a.currentTime + 0.05; const [n0, n1] = ET.q.notes;
+  if (ET.q.mode === 'harm') { playNote(n0, 1.6, t); playNote(n1, 1.6, t); }
+  else { playNote(n0, 0.9, t); playNote(n1, 1.1, t + 0.75); }
+}
+function earNew() {
+  const set = S.earCfg.set;
+  if (set.length < 2) { const fb = $('#ear-fb'); fb.className = 'fb bad'; fb.textContent = 'Выберите справа хотя бы два интервала.'; return; }
+  const cand = set.map(iv => { const st = S.ear[iv] || { s: 0, w: 0 }; return { iv, w: 1 + 4 * (st.w / (st.s + 1)) + (st.s < 2 ? 0.8 : 0) }; })
+    .filter(c => set.length < 3 || !ET.q || c.iv !== ET.q.iv || Math.random() < 0.3);
+  const iv = pickWeighted(cand).iv; const mode = S.earCfg.mode;
+  let notes;
+  if (mode === 'down') { const r = rnd(60, 76); notes = [r, r - iv]; } else { const r = rnd(53, 72); notes = [r, r + iv]; }
+  ET.q = { iv, notes, mode }; ET.wrong = 0; ET.done = false;
+  clearMarks('mark');
+  $$('#ear-btns button').forEach(b => { b.classList.remove('ok', 'bad'); b.disabled = !set.includes(+b.dataset.iv); });
+  $('#ear-next').disabled = true; $('#ear-show').disabled = false; $('#ear-play').textContent = 'Повторить';
+  const fb = $('#ear-fb'); fb.className = 'fb'; fb.textContent = 'Какой это интервал?';
+  earPlay();
+}
+function earNext() { earNew(); }
+function earFinish(correct) {
+  ET.done = true;
+  const [n0, n1] = ET.q.notes;
+  [n0, n1].forEach(m => keyEl[m] && keyEl[m].classList.add('mark')); scrollKbTo(Math.round((n0 + n1) / 2));
+  $('#ear-next').disabled = false; $('#ear-show').disabled = true; $('#ear-play').textContent = 'Новый интервал';
+  const v = IV.find(x => x[0] === ET.q.iv);
+  const fb = $('#ear-fb'); fb.className = 'fb ' + (correct ? 'ok' : 'bad');
+  fb.textContent = `${correct ? 'Верно' : 'Ответ'}: ${v[2]} (${v[1]}) · ${nm(n0)} — ${nm(n1)}`;
+  $$('#ear-btns button').forEach(b => { if (+b.dataset.iv === ET.q.iv) b.classList.add('ok'); });
+  renderEarSide();
+}
+function earAnswer(iv, btn) {
+  if (!ET.q || ET.done) return;
+  if (iv === ET.q.iv) {
+    // ошибка уже посчитана при первом неверном ответе
+    if (!ET.wrong) { const st = S.ear[iv] || (S.ear[iv] = { s: 0, w: 0 }); st.s++; }
+    day().ear++; save(); earFinish(!ET.wrong);
+  } else {
+    if (!ET.wrong) { const st = S.ear[ET.q.iv] || (S.ear[ET.q.iv] = { s: 0, w: 0 }); st.w++; st.s++; save(); }
+    ET.wrong++; btn.classList.add('bad');
+    const fb = $('#ear-fb'); fb.className = 'fb bad'; fb.textContent = 'Нет. Послушайте ещё раз (пробел) и попробуйте снова.';
+  }
+}
+function renderEarSide() {
+  const t = dayRO();
+  $('#ear-day').textContent = t.ear; $('#ear-day-bar').style.width = Math.min(100, t.ear / 10 * 100) + '%';
+  const rows = IV.filter(v => S.ear[v[0]] && S.ear[v[0]].s).map(v => {
+    const st = S.ear[v[0]]; const p = Math.round(100 * (st.s - st.w) / st.s);
+    return `<div class="iv-stat"><span>${v[1]}</span><div class="meter"><i style="width:${p}%"></i></div><span class="muted">${p}% из ${st.s}</span></div>`;
+  });
+  $('#ear-stats').innerHTML = rows.length ? rows.join('') : '<span class="muted" style="font-size:14px">Здесь появится точность по каждому интервалу.</span>';
+}
+function buildEar() {
+  $('#ear-btns').innerHTML = IV.map(v => `<button data-iv="${v[0]}" disabled title="${v[2]}">${v[1]}<small>${v[2].replace(' ', '&nbsp;')}</small></button>`).join('');
+  $$('#ear-btns button').forEach(b => b.addEventListener('click', () => earAnswer(+b.dataset.iv, b)));
+  $('#ear-set').innerHTML = IV.map(v => `<label class="opt"><input type="checkbox" id="iv-${v[0]}" value="${v[0]}"> ${v[1]}</label>`).join('');
+  $$('#ear-set input').forEach(c => c.addEventListener('change', () => {
+    S.earCfg.set = $$('#ear-set input').filter(x => x.checked).map(x => +x.value); save();
+    if (ET.q && !ET.done) $$('#ear-btns button').forEach(b => { if (!b.classList.contains('ok') && !b.classList.contains('bad')) b.disabled = !S.earCfg.set.includes(+b.dataset.iv) && +b.dataset.iv !== ET.q.iv; });
+  }));
+}
+$('#ear-play').addEventListener('click', earPlay);
+$('#ear-next').addEventListener('click', earNext);
+$('#ear-show').addEventListener('click', () => {
+  if (!ET.q || ET.done) return;
+  if (!ET.wrong) { const st = S.ear[ET.q.iv] || (S.ear[ET.q.iv] = { s: 0, w: 0 }); st.s++; st.w++; save(); }
+  earFinish(false); earPlay();
+});
+const paintEarMode = segInit('ear-mode', () => S.earCfg.mode, v => { S.earCfg.mode = v; save(); ET.done = true; });
+function enterEar() {
+  paintEarMode();
+  $$('#ear-set input').forEach(c => { c.checked = S.earCfg.set.includes(+c.value); });
+  handler = null;
+  if (ET.q && ET.done) [ET.q.notes[0], ET.q.notes[1]].forEach(m => keyEl[m] && keyEl[m].classList.add('mark'));
+  scrollKbTo(ET.q ? ET.q.notes[0] : 64);
+  renderEarSide();
+}
+
+/* ---------- пение: микрофон и высота голоса ---------- */
+const VOICE = { low: [48, 64], high: [60, 76] }; // до малой — ми первой; до первой — ми второй
+const HOLD = 700; // сколько миллисекунд держать ноту
+const SG = { stream: null, an: null, buf: null, timer: null, target: null, last: null, hold: 0, mute: 0, hist: [], done: false, dir: 0 };
+
+// алгоритм YIN: частота основного тона по отрезку сигнала
+function yin(buf, sr) {
+  const N = buf.length;
+  let rms = 0; for (let i = 0; i < N; i++) rms += buf[i] * buf[i];
+  if (Math.sqrt(rms / N) < 0.012) return null; // тишина
+  const minT = Math.floor(sr / 1100), maxT = Math.min(Math.floor(sr / 65), (N >> 1) - 2);
+  const W = N - maxT - 2;
+  const d = new Float32Array(maxT + 2);
+  for (let t = 1; t <= maxT + 1; t++) {
+    let s = 0; for (let i = 0; i < W; i++) { const x = buf[i] - buf[i + t]; s += x * x; } d[t] = s;
+  }
+  let run = 0; d[0] = 1;
+  for (let t = 1; t <= maxT + 1; t++) { run += d[t]; d[t] = run ? d[t] * t / run : 1; }
+  let tau = -1;
+  for (let t = minT; t <= maxT; t++) {
+    if (d[t] < 0.15) { while (t + 1 <= maxT && d[t + 1] < d[t]) t++; tau = t; break; }
+  }
+  if (tau < 2) return null;
+  const x0 = d[tau - 1], x1 = d[tau], x2 = d[tau + 1];
+  const a = (x0 + x2 - 2 * x1) / 2, b = (x2 - x0) / 2;
+  const t = a ? tau - b / (2 * a) : tau;
+  return sr / t;
+}
+async function micOn() {
+  const st = $('#mic-state');
+  if (SG.stream) { micOff(); return; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { st.textContent = 'Этот браузер не даёт доступа к микрофону.'; return; }
+  try {
+    const a = ac();
+    SG.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+    const src = a.createMediaStreamSource(SG.stream);
+    SG.an = a.createAnalyser(); SG.an.fftSize = 2048; src.connect(SG.an);
+    SG.buf = new Float32Array(SG.an.fftSize); SG.hist = []; SG.hold = 0;
+    SG.timer = setInterval(singTick, 50);
+    $('#mic-btn').textContent = 'Выключить микрофон';
+    st.textContent = 'Микрофон включён. Пойте.';
+    if (curSec !== 'sing') micOff();
+  } catch (e) {
+    SG.stream = null;
+    st.textContent = IN_CLAUDE
+      ? 'В окне claude.ai браузер закрывает доступ к микрофону. Откройте версию сайта на GitHub Pages.'
+      : 'Доступ к микрофону не разрешён. Разрешите его в адресной строке браузера и нажмите кнопку снова.';
+  }
+}
+function micOff() {
+  if (SG.stream) SG.stream.getTracks().forEach(t => t.stop());
+  SG.stream = null; SG.an = null; clearInterval(SG.timer); SG.timer = null;
+  $('#mic-btn').textContent = 'Включить микрофон';
+  $('#mic-state').textContent = 'Микрофон выключен.';
+  $('#g-needle').hidden = true; $('#sung-name').textContent = '—'; $('#hold-bar').style.width = '0';
+  clearMarks('mark');
+}
+let sungKey = null;
+function showSung(med) {
+  const n = $('#g-needle');
+  if (med == null) { n.hidden = true; if (sungKey != null && keyEl[sungKey]) keyEl[sungKey].classList.remove('mark'); sungKey = null; return; }
+  const m = Math.round(med), c = Math.round((med - m) * 100);
+  $('#sung-name').textContent = fullName(m);
+  const x = 150 + c * 2.8;
+  n.setAttribute('x1', x); n.setAttribute('x2', x); n.hidden = false; n.classList.toggle('ok', Math.abs(c) <= 40);
+  if (sungKey !== m) { if (sungKey != null && keyEl[sungKey]) keyEl[sungKey].classList.remove('mark'); sungKey = m; keyEl[m] && keyEl[m].classList.add('mark'); }
+}
+function singTick() {
+  if (!SG.an) return;
+  SG.an.getFloatTimeDomainData(SG.buf);
+  const f = performance.now() < SG.mute ? null : yin(SG.buf, AC.sampleRate);
+  if (!f) { SG.hist = []; SG.hold = Math.max(0, SG.hold - 100); $('#hold-bar').style.width = Math.min(100, SG.hold / HOLD * 100) + '%'; showSung(null); return; }
+  SG.hist.push(69 + 12 * Math.log2(f / 440)); if (SG.hist.length > 5) SG.hist.shift();
+  const med = [...SG.hist].sort((a, b) => a - b)[SG.hist.length >> 1];
+  showSung(med);
+  if (S.singCfg.mode === 'tuner' || SG.target == null || SG.done) return;
+  let diff = med - SG.target; diff -= 12 * Math.round(diff / 12); // октава не важна
+  if (Math.abs(diff) <= 0.4) SG.hold += 50; else SG.hold = Math.max(0, SG.hold - 50);
+  $('#hold-bar').style.width = Math.min(100, SG.hold / HOLD * 100) + '%';
+  const dir = Math.abs(diff) <= 0.4 ? 0 : diff > 0 ? 1 : -1;
+  if (dir !== SG.dir) {
+    SG.dir = dir; const fb = $('#sing-fb'); fb.className = 'fb';
+    fb.textContent = dir === 0 ? 'Попали — держите ноту.' : dir > 0 ? 'Выше нужной ноты — опуститесь.' : 'Ниже нужной ноты — поднимитесь.';
+  }
+  if (SG.hold >= HOLD) singHit();
+}
+function singRef() { if (SG.target == null) return; playNote(SG.target, 1.2); SG.mute = performance.now() + 1500; }
+function singNext() {
+  const [lo, hi] = VOICE[S.singCfg.voice]; const cand = [];
+  for (let m = lo; m <= hi; m++) {
+    if (!isWhite(m) || m === SG.last) continue;
+    const st = S.sing[m] || { s: 0, w: 0 };
+    cand.push({ m, w: 1 + 4 * (st.w / (st.s + 1)) + (st.s < 2 ? 0.8 : 0) });
+  }
+  SG.target = pickWeighted(cand).m; SG.last = SG.target; SG.hold = 0; SG.done = false; SG.dir = null;
+  $('#hold-bar').style.width = '0';
+  drawSingTarget();
+  const fb = $('#sing-fb'); fb.className = 'fb';
+  fb.textContent = SG.stream ? 'Спойте эту ноту.' : 'Включите микрофон, чтобы начать.';
+  if (S.singCfg.mode === 'ear') singRef();
+  scrollKbTo(SG.target);
+}
+function drawSingTarget() {
+  const el = $('#sing-target'), m = SG.target;
+  if (S.singCfg.mode === 'tuner' || m == null) { el.innerHTML = ''; return; }
+  el.innerHTML = S.singCfg.mode === 'sheet'
+    ? `<div style="max-width:300px; margin:0 auto">${staffSVG(m >= 60 ? 'treble' : 'bass', [m], { w: 240 })}</div>`
+    : `<div class="target-big"><small>Спойте</small>${fullName(m)}</div>`;
+}
+function singHit() {
+  SG.done = true;
+  const st = S.sing[SG.target] || (S.sing[SG.target] = { s: 0, w: 0 }); st.s++;
+  day().sing++; save();
+  const fb = $('#sing-fb'); fb.className = 'fb ok'; fb.textContent = `Верно: ${fullName(SG.target)}`;
+  flash(SG.target, 'ok', 800); renderSingSide();
+  setTimeout(() => { if (curSec === 'sing' && S.singCfg.mode !== 'tuner') singNext(); }, 1100);
+}
+function renderSingSide() {
+  const t = dayRO();
+  $('#sing-day').textContent = t.sing; $('#sing-day-bar').style.width = Math.min(100, t.sing / 10 * 100) + '%';
+  let s = 0, w = 0; Object.values(S.sing).forEach(x => { s += x.s; w += x.w; });
+  $('#sing-kv').innerHTML = `<dt>Спето нот всего</dt><dd>${s - w}</dd><dt>Пропущено</dt><dd>${w}</dd><dt>Держать ноту</dt><dd>0,7 с</dd>`;
+}
+function singButtons() { const tuner = S.singCfg.mode === 'tuner'; $('#sing-ref').disabled = tuner; $('#sing-skip').disabled = tuner; }
+$('#mic-btn').addEventListener('click', micOn);
+$('#sing-ref').addEventListener('click', singRef);
+$('#sing-skip').addEventListener('click', () => {
+  if (SG.target == null) return;
+  if (!SG.done) { const st = S.sing[SG.target] || (S.sing[SG.target] = { s: 0, w: 0 }); st.s++; st.w++; save(); }
+  renderSingSide(); singNext();
+});
+const paintSingMode = segInit('sing-mode', () => S.singCfg.mode, v => {
+  S.singCfg.mode = v; save(); singButtons(); SG.target = null;
+  if (v === 'tuner') { drawSingTarget(); const fb = $('#sing-fb'); fb.className = 'fb'; fb.textContent = ''; } else singNext();
+});
+const paintSingVoice = segInit('sing-voice', () => S.singCfg.voice, v => { S.singCfg.voice = v; save(); SG.last = null; if (S.singCfg.mode !== 'tuner') singNext(); });
+function enterSing() {
+  paintSingMode(); paintSingVoice(); singButtons(); renderSingSide();
+  handler = null;
+  if (S.singCfg.mode !== 'tuner' && SG.target == null) singNext(); else { drawSingTarget(); scrollKbTo(SG.target || 60); }
+}
+
+/* ---------- клавиатура и метроном ---------- */
+const metro = { on: false, next: 0, beat: 0, timer: null };
+function click(t, accent) {
+  const a = ac(); const o = a.createOscillator(); const g = a.createGain();
+  o.frequency.value = accent ? 1760 : 1100;
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(accent ? 0.7 : 0.4, t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.06);
+}
+function showBeat(b) { $$('#beats i').forEach((el, i) => el.classList.toggle('on', i === b)); }
+function sched() {
+  const a = ac();
+  while (metro.next < a.currentTime + 0.12) {
+    const b = metro.beat; click(metro.next, b === 0);
+    setTimeout(() => showBeat(b), Math.max(0, (metro.next - a.currentTime) * 1000));
+    metro.next += 60 / S.metro.bpm; metro.beat = (b + 1) % S.metro.beats;
+  }
+}
+function drawBeats() { $('#beats').innerHTML = Array.from({ length: S.metro.beats }, (_, i) => `<i class="${i === 0 ? 'acc' : ''}"></i>`).join(''); }
+$('#metro-toggle').addEventListener('click', () => {
+  metro.on = !metro.on;
+  if (metro.on) { metro.next = ac().currentTime + 0.05; metro.beat = 0; metro.timer = setInterval(sched, 25); sched(); }
+  else { clearInterval(metro.timer); showBeat(-1); }
+  $('#metro-toggle').textContent = metro.on ? 'Выключить' : 'Включить';
+});
+$('#bpm').addEventListener('input', e => { S.metro.bpm = +e.target.value; $('#bpm-val').textContent = S.metro.bpm; save(); });
+const paintMeter = segInit('metro-meter', () => S.metro.beats, v => { S.metro.beats = +v; metro.beat = 0; drawBeats(); save(); });
+function enterKeys() {
+  $('#bpm').value = S.metro.bpm; $('#bpm-val').textContent = S.metro.bpm; paintMeter(); drawBeats();
+  handler = null; scrollKbTo(66);
+}
+
+/* ---------- уроки ---------- */
+const LESSONS = [
+  { id: 'l1', n: 1, title: 'Клавиатура', short: 'Группы чёрных клавиш и где искать «до»',
+    body: `<p>Клавиши фортепиано повторяются одним и тем же рисунком: семь белых и пять чёрных. Такой отрезок из двенадцати клавиш называется <b>октавой</b>.</p>
+<p>Чёрные клавиши стоят группами — по две и по три. По этим группам находят любую ноту, не считая клавиши подряд.</p>
+<p><b>До</b> — белая клавиша слева от группы из двух чёрных. На экранной клавиатуре внизу каждая «до» подписана.</p>
+<p>Дальше вправо идут ре, ми (справа от двух чёрных), фа (слева от трёх чёрных), соль, ля, си — и снова до.</p>`,
+    task: { type: 'octC', need: 3, title: 'Задание', text: 'Нажмите «до» в трёх разных октавах. Прокрутите клавиатуру, если нужно.' } },
+  { id: 'l2', n: 2, title: 'Названия нот и октавы', short: 'До, ре, ми… и почему «до первой октавы»',
+    body: `<p>Семь нот: <b>до, ре, ми, фа, соль, ля, си</b>. После си снова начинается до, но выше — в следующей октаве.</p>
+<p>Октавы имеют имена. Посередине клавиатуры — <b>первая октава</b>, выше — вторая и третья, ниже — малая и большая. Поэтому полное название ноты звучит так: «соль первой октавы», «ля малой октавы».</p>
+<p>До первой октавы стоит почти ровно посередине инструмента. От неё удобно считать всё остальное.</p>
+<p>Ряд нот подряд от до до до называется гаммой до мажор. Её играют на одних белых клавишах.</p>`,
+    task: { type: 'seq', notes: [60, 62, 64, 65, 67, 69, 71, 72], title: 'Задание', text: 'Сыграйте гамму до мажор: от до первой октавы до до второй октавы, по одной ноте.' } },
+  { id: 'l3', n: 3, title: 'Скрипичный ключ', short: 'Пять линеек и нота соль',
+    body: `<p>Ноты записывают на <b>нотном стане</b> — пяти линейках. Линейки считают снизу вверх. Ноты пишут на линейках и между ними, каждое следующее место — следующая нота.</p>
+<p><b>Скрипичный ключ</b> ещё называют ключом соль: его завиток обвивает вторую линейку, и на ней стоит соль первой октавы.</p>
+<div class="ill" data-clef="treble" data-notes="64,65,67,69,71,72,74,76,77"></div>
+<p>На первой линейке — ми первой октавы, на пятой — фа второй. Ноты выше и ниже стана пишут на коротких <b>добавочных линейках</b>. До первой октавы — на первой добавочной снизу.</p>
+<div class="ill" data-clef="treble" data-notes="60,62,64"></div>`,
+    task: { type: 'staff', clef: 'treble', notes: [67, 64, 60, 71, 65, 72, 69], title: 'Задание', text: 'Нажимайте на клавиатуре ноты, которые появляются на стане.' } },
+  { id: 'l4', n: 4, title: 'Басовый ключ', short: 'Ключ фа и ноты для левой руки',
+    body: `<p>Низкие ноты, которые обычно играет левая рука, пишут в <b>басовом ключе</b>. Его называют ключом фа: две точки стоят вокруг четвёртой линейки, и на ней — фа малой октавы.</p>
+<div class="ill" data-clef="bass" data-notes="43,45,47,48,50,52,53,55,57"></div>
+<p>На первой линейке — соль большой октавы, на пятой — ля малой. До первой октавы — на первой добавочной линейке сверху. Это та же самая клавиша, что и до первой в скрипичном ключе: два ключа встречаются на ней.</p>
+<div class="ill" data-clef="bass" data-notes="57,59,60"></div>`,
+    task: { type: 'staff', clef: 'bass', notes: [53, 43, 48, 57, 50, 60, 55], title: 'Задание', text: 'Нажимайте на клавиатуре ноты, которые появляются на стане.' } },
+  { id: 'l5', n: 5, title: 'Длительности и паузы', short: 'Целая, половинная, четверть, восьмая' },
+  { id: 'l6', n: 6, title: 'Размер и такт', short: 'Сильная доля, 2/4, 3/4, 4/4, тренажёр ритма' },
+  { id: 'l7', n: 7, title: 'Диез, бемоль, бекар', short: 'Чёрные клавиши и их названия' },
+  { id: 'l8', n: 8, title: 'Тон и полутон', short: 'Строение мажорной гаммы' },
+  { id: 'l9', n: 9, title: 'Тональности', short: 'Ключевые знаки и квинтовый круг' },
+  { id: 'l10', n: 10, title: 'Трезвучия', short: 'Мажорные и минорные аккорды, обращения' }
+];
+let LS = null; // состояние открытого урока
+function renderLessons() {
+  if (LS) { renderLessonView(); return; }
+  $('#lessons-list').hidden = false; $('#lesson-view').hidden = true;
+  $('#lessons').innerHTML = LESSONS.map(l => {
+    const done = S.lessons[l.id];
+    const st = !l.task ? '<span class="st st-plan">в плане</span>' : done ? '<span class="st st-done">пройден</span>' : '<span class="st st-work">открыт</span>';
+    return `<li><button class="lesson-card" data-id="${l.id}" ${l.task ? '' : 'disabled'}><span class="n">Урок ${l.n}</span><h3>${l.title}</h3><span class="muted">${l.short}</span>${st}</button></li>`;
+  }).join('');
+  $$('.lesson-card:not(:disabled)').forEach(b => b.addEventListener('click', () => openLesson(b.dataset.id)));
+  handler = null;
+}
+function openLesson(id) {
+  const l = LESSONS.find(x => x.id === id); if (!l || !l.task) return;
+  LS = { l, i: 0, found: new Set(), done: false };
+  renderLessonView();
+  window.scrollTo({ top: 0 });
+}
+function renderLessonView() {
+  const l = LS.l;
+  $('#lessons-list').hidden = true; $('#lesson-view').hidden = false;
+  const nextL = LESSONS.find(x => x.n === l.n + 1 && x.task);
+  $('#lesson-view').innerHTML = `<div class="lesson">
+    <div class="row" style="margin-bottom:12px"><button class="btn" id="ls-back">← Все уроки</button>${S.lessons[l.id] ? '<span class="st st-done">пройден</span>' : ''}</div>
+    <div class="label">Урок ${l.n}</div><h1 style="font-size:34px; margin-bottom:12px">${l.title}</h1>
+    <div class="body">${l.body}</div>
+    <div class="task"><h3>${l.task.title}</h3><p style="margin:0">${l.task.text}</p><div id="ls-task"></div>
+      <div class="fb" id="ls-fb" aria-live="polite"></div>
+      <div class="row" id="ls-after" hidden style="justify-content:center; margin-top:8px">
+        <button class="btn" id="ls-again">Пройти ещё раз</button>
+        ${nextL ? `<button class="btn primary" id="ls-next">Урок ${nextL.n}: ${nextL.title}</button>` : '<button class="btn primary" id="ls-list">К списку уроков</button>'}
+      </div>
+    </div></div>`;
+  $$('#lesson-view .ill').forEach(d => { d.innerHTML = staffSVG(d.dataset.clef, d.dataset.notes.split(',').map(Number), { w: 440, labels: true }); });
+  $('#ls-back').addEventListener('click', () => { LS = null; renderLessons(); });
+  $('#ls-again').addEventListener('click', () => openLesson(l.id));
+  const nb = $('#ls-next'); if (nb) nb.addEventListener('click', () => openLesson(nextL.id));
+  const lb = $('#ls-list'); if (lb) lb.addEventListener('click', () => { LS = null; renderLessons(); });
+  drawTask();
+  handler = lessonKey;
+  scrollKbTo(l.task.type === 'staff' ? (l.task.clef === 'treble' ? 67 : 50) : 60);
+}
+function drawTask() {
+  const t = LS.l.task; const box = $('#ls-task');
+  if (t.type === 'octC') {
+    box.innerHTML = `<div class="chips">${Array.from({ length: t.need }, (_, i) => { const m = [...LS.found][i]; return `<span class="chip ${m != null ? 'ok' : ''}">${m != null ? fullName(m) : 'до ?'}</span>`; }).join('')}</div>`;
+  } else if (t.type === 'seq') {
+    box.innerHTML = `<div class="chips">${t.notes.map((m, i) => `<span class="chip ${i < LS.i ? 'ok' : i === LS.i && !LS.done ? 'now' : ''}">${nm(m)}${m % 12 === 0 ? ' ' + octLabel(m) : ''}</span>`).join('')}</div>`;
+  } else if (t.type === 'staff') {
+    const m = t.notes[Math.min(LS.i, t.notes.length - 1)];
+    box.innerHTML = (LS.done ? '' : staffSVG(t.clef, [m], { w: 260 })) + `<div class="chips">${t.notes.map((_, i) => `<span class="chip ${i < LS.i ? 'ok' : i === LS.i && !LS.done ? 'now' : ''}">${i + 1}</span>`).join('')}</div>`;
+  }
+}
+function lessonKey(m) {
+  if (!LS || LS.done) return;
+  const t = LS.l.task; const fb = $('#ls-fb');
+  if (t.type === 'octC') {
+    if (m % 12 === 0) {
+      if (LS.found.has(m)) { fb.className = 'fb'; fb.textContent = 'Эта «до» уже найдена. Найдите в другой октаве.'; return; }
+      LS.found.add(m); flash(m, 'ok'); fb.className = 'fb ok'; fb.textContent = `Верно: ${fullName(m)}`;
+      if (LS.found.size >= t.need) return lessonDone();
+    } else { flash(m, 'bad'); fb.className = 'fb bad'; fb.textContent = `Это ${nm(m)}. «До» — слева от двух чёрных клавиш.`; }
+  } else {
+    const want = t.notes[LS.i];
+    if (m === want) {
+      flash(m, 'ok'); clearMarks('hint'); LS.i++; LS.miss = 0; fb.className = 'fb ok'; fb.textContent = `Верно: ${fullName(m)}`;
+      if (LS.i >= t.notes.length) return lessonDone();
+    } else {
+      flash(m, 'bad'); LS.miss = (LS.miss || 0) + 1; fb.className = 'fb bad';
+      fb.textContent = `Нажата ${fullName(m)}.` + (LS.miss >= 2 ? ' Нужная клавиша мигает.' : ' Попробуйте ещё.');
+      if (LS.miss >= 2 && keyEl[want]) { keyEl[want].classList.add('hint'); scrollKbTo(want); }
+    }
+  }
+  drawTask();
+}
+function lessonDone() {
+  LS.done = true; const id = LS.l.id;
+  S.lessons[id] = { done: true, at: todayKey() };
+  const d = day(); if (!d.lessons.includes(id)) d.lessons.push(id);
+  save(); drawTask();
+  const fb = $('#ls-fb'); fb.className = 'fb ok'; fb.textContent = 'Урок пройден!';
+  $('#ls-after').hidden = false;
+}
+
+/* ---------- документы ---------- */
+let DOCS = []; const docCache = {}; let openDocId = null;
+const isRead = d => S.docsRead[d.id] === d.updated;
+const fmtUpd = u => { const [d, t] = u.split('T'); const [y, mo, da] = d.split('-'); return `${da}.${mo}.${y}${t ? ', ' + t : ''}`; };
+async function loadDocs() {
+  try { const r = await fetch('docs/manifest.json', { cache: 'no-store' }); if (!r.ok) throw 0; DOCS = await r.json(); }
+  catch (e) { DOCS = []; $('#docs-list').innerHTML = '<p class="muted">Не удалось загрузить список документов. Обновите страницу.</p>'; return; }
+  updateBadge(); if (curSec === 'docs') renderDocs();
+}
+async function getDoc(d) {
+  if (!docCache[d.id]) { const r = await fetch(d.file + '?v=' + encodeURIComponent(d.updated)); if (!r.ok) throw new Error('fetch'); docCache[d.id] = await r.text(); }
+  return docCache[d.id];
+}
+function updateBadge() { const n = DOCS.filter(d => !isRead(d)).length; const b = $('#docs-badge'); b.hidden = !n; b.textContent = n; }
+function renderDocs() {
+  if (openDocId) { $('#docs-listview').hidden = true; $('#docs-reader').hidden = false; paintReader(); return; }
+  $('#docs-listview').hidden = false; $('#docs-reader').hidden = true;
+  if (!DOCS.length) return;
+  $('#docs-list').innerHTML = DOCS.map(d => {
+    const r = isRead(d);
+    return `<article class="doc-card"><h2>${d.title}</h2><p>${d.desc}</p>
+      <div class="row"><button class="btn primary" data-act="open" data-id="${d.id}">Открыть</button>
+      <button class="btn" data-act="pdf" data-id="${d.id}">PDF</button>
+      <button class="btn" data-act="read" data-id="${d.id}">${r ? 'Отметить непрочитанным' : 'Отметить прочитанным'}</button>
+      <span class="upd">версия ${d.version} · обновлён ${fmtUpd(d.updated)}</span></div>
+      <span class="rd ${r ? 'yes' : 'no'}">${r ? 'прочитан' : 'не прочитан'}</span></article>`;
+  }).join('');
+  $$('#docs-list [data-act]').forEach(b => b.addEventListener('click', () => docAct(b.dataset.act, b.dataset.id, b)));
+  updateBadge();
+}
+function toggleRead(id) { const d = DOCS.find(x => x.id === id); if (isRead(d)) delete S.docsRead[id]; else S.docsRead[id] = d.updated; save(); updateBadge(); }
+async function docAct(act, id, btn) {
+  if (act === 'open') { openDocId = id; renderDocs(); window.scrollTo({ top: 0 }); }
+  else if (act === 'read') { toggleRead(id); renderDocs(); }
+  else if (act === 'pdf') makePdf(id, btn);
+}
+async function paintReader() {
+  const d = DOCS.find(x => x.id === openDocId); if (!d) { openDocId = null; renderDocs(); return; }
+  $('#rd-read').textContent = isRead(d) ? 'Отметить непрочитанным' : 'Отметить прочитанным';
+  const body = $('#rd-body');
+  if (!docCache[d.id]) body.innerHTML = '<p class="muted">Загружаю…</p>';
+  try { body.innerHTML = await getDoc(d); } catch (e) { body.innerHTML = '<p class="muted">Не удалось загрузить документ. Обновите страницу.</p>'; }
+}
+$('#rd-back').addEventListener('click', () => { openDocId = null; renderDocs(); });
+$('#rd-read').addEventListener('click', () => { toggleRead(openDocId); paintReader(); });
+$('#rd-pdf').addEventListener('click', e => makePdf(openDocId, e.currentTarget));
+document.addEventListener('click', e => {
+  const a = e.target.closest('[data-doc]'); if (!a) return;
+  e.preventDefault(); openDocId = a.dataset.doc; go('docs');
+});
+let h2p = null;
+function loadH2P() {
+  return h2p || (h2p = new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+    s.onload = () => res(window.html2pdf); s.onerror = () => { h2p = null; rej(new Error('load')); };
+    document.head.appendChild(s);
+  }));
+}
+let downloadsP = null;
+async function makePdf(id, btn) {
+  const d = DOCS.find(x => x.id === id); if (!d) return;
+  const old = btn.textContent; btn.disabled = true; btn.textContent = 'Готовлю…';
+  try {
+    let dl = null;
+    if (IN_CLAUDE) {
+      if (!downloadsP) downloadsP = window.claude.use('downloads');
+      dl = await downloadsP;
+      if (!dl) { toast('В этом окне сохранение файлов недоступно. Откройте версию сайта на GitHub Pages.'); return; }
+    }
+    const [lib, html] = await Promise.all([loadH2P(), getDoc(d)]);
+    const box = document.createElement('div'); box.className = 'doc pdf-src'; box.innerHTML = html;
+    document.body.appendChild(box);
+    let blob;
+    try {
+      blob = await lib().set({
+        margin: [12, 12, 14, 12], image: { type: 'jpeg', quality: 0.95 },
+        html2canvas: { scale: 2, backgroundColor: '#ffffff', useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['css', 'legacy'], avoid: ['tr', 'li', 'h2', 'h3'] }
+      }).from(box).outputPdf('blob');
+    } finally { box.remove(); }
+    const filename = d.title.replace(/[«»:"\/\\?*|<>]/g, '').replace(/\s+/g, ' ').trim() + '.pdf';
+    if (dl) await dl.save({ filename, data: blob });
+    else { // обычный сайт (GitHub Pages): браузер скачивает файл сам
+      const url = URL.createObjectURL(blob); const a = document.createElement('a');
+      a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }
+    toast('PDF сохранён');
+  } catch (e) {
+    if (e && e.code === 'declined') toast('Сохранение отменено');
+    else if (e && e.code === 'rate_limited') toast('Окно сохранения уже открыто');
+    else toast('Не удалось подготовить PDF. Попробуйте ещё раз.');
+  } finally { btn.disabled = false; btn.textContent = old; }
+}
+
+/* ---------- мелочи ---------- */
+let toastT = null;
+function toast(msg) {
+  let t = $('.toast'); if (!t) { t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
+  t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3200);
+}
+
+/* ---------- настройки ---------- */
+$('#gear').addEventListener('click', () => { const p = $('#settings'); p.hidden = !p.hidden; $('#gear').setAttribute('aria-expanded', String(!p.hidden)); });
+function applySettings() {
+  $('#names-' + S.settings.names).checked = true;
+  $('#labels-' + S.settings.labels).checked = true;
+  $('#vol').value = S.settings.vol;
+  if (master) master.gain.value = S.settings.vol;
+  labelKeys(); kbInfo(); buildNameButtons(); updateBadge();
+}
+$$('input[name=names]').forEach(r => r.addEventListener('change', () => { S.settings.names = r.value; save(); applySettings(); renderSection(); }));
+$$('input[name=labels]').forEach(r => r.addEventListener('change', () => { S.settings.labels = r.value; save(); labelKeys(); }));
+$('#vol').addEventListener('input', e => { S.settings.vol = +e.target.value; if (master) master.gain.value = S.settings.vol; save(); });
+let resetArm = null;
+$('#reset').addEventListener('click', () => {
+  const b = $('#reset');
+  if (!resetArm) { b.textContent = 'Точно сбросить? Нажмите ещё раз'; resetArm = setTimeout(() => { resetArm = null; b.textContent = 'Сбросить прогресс'; }, 4000); return; }
+  clearTimeout(resetArm); resetArm = null; b.textContent = 'Сбросить прогресс';
+  const keep = { settings: S.settings, docsRead: S.docsRead };
+  S = merge(DEF(), keep); NT.target = null; ET.q = null; LS = null; SG.target = null; save(); applySettings(); renderSection(); toast('Прогресс сброшен');
+});
+
+/* ---------- старт ---------- */
+buildKeyboard(); buildEar(); applySettings();
+const h = (location.hash || '').slice(1);
+go(SECS.includes(h) ? h : 'today');
+loadDocs();
+initCloud();
+})();
+</script>
+
+</body>
+</html>
