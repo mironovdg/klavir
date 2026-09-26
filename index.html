@@ -279,6 +279,17 @@ body.with-kb .toast{bottom:calc(210px + env(safe-area-inset-bottom,0px))}
           <span id="store-state" class="muted" style="font-size:14px">Проверяю хранилище…</span>
           <button class="btn" id="reset" style="justify-self:start; margin-top:4px">Сбросить прогресс</button>
         </fieldset>
+        <fieldset>
+          <legend>Перенос на другое устройство</legend>
+          <span class="muted" style="font-size:14px">Сохраните прогресс в файл здесь и загрузите его на другом устройстве.</span>
+          <button class="btn" id="exp-btn" style="justify-self:start">Сохранить прогресс в файл</button>
+          <button class="btn" id="imp-btn" style="justify-self:start">Загрузить из файла</button>
+          <input type="file" id="imp-file" accept=".json,application/json" hidden>
+          <div id="imp-confirm" hidden style="background:var(--warn-soft); border-radius:8px; padding:10px 12px; font-size:14px">
+            <p id="imp-text" style="margin:0 0 8px"></p>
+            <div class="row"><button class="btn primary" id="imp-yes">Заменить</button><button class="btn" id="imp-no">Отмена</button></div>
+          </div>
+        </fieldset>
       </div>
     </div>
   </div>
@@ -783,12 +794,13 @@ function staffSVG(clef, notes, opt = {}) {
 /* ---------- подсказки ---------- */
 const HINTS = {
   today: ['Здесь план занятия на день и сводка прогресса. Нажмите пункт плана, чтобы перейти к заданию.',
-    '«Дней подряд» растёт, если заниматься каждый день: достаточно одного выполненного задания.'],
+    '«Дней подряд» растёт, если заниматься каждый день: достаточно одного выполненного задания.',
+    'Прогресс хранится в этом браузере. Чтобы продолжить на другом устройстве: «Настройки» → «Сохранить прогресс в файл», затем на другом устройстве «Загрузить из файла».'],
   lessons: ['Уроки идут в порядке музыкальной школы. Прочитайте объяснение и выполните задание внизу урока на клавиатуре.',
     'Урок засчитывается, когда задание выполнено. Уроки 5–10 появятся позже — они есть в документе «Учебная программа».'],
   notes: ['На стане появляется нота. Нажмите эту клавишу (октава важна) или кнопку с названием под станом (октава не важна).',
     'После двух ошибок нужная клавиша начинает мигать. Ноты, в которых вы ошибались, появляются чаще.',
-    'Клавиши компьютера: A S D F G H J K — белые от «до» до «до», W E T Y U — чёрные, Z и X — октава ниже и выше.'],
+    'Клавиши компьютера: A S D F G H J K — белые от «до» до «до», W E T Y U — чёрные (R пропущена: между ми и фа чёрной клавиши нет), Z и X — октава ниже и выше.'],
   ear: ['Нажмите «Сыграть» (или пробел) — прозвучат две ноты. Выберите интервал кнопкой. «Дальше» — Enter.',
     'Справа галочками выбирается, какие интервалы спрашивать. Начните с трёх-четырёх и добавляйте новый, когда точность выше 80%.',
     'После ответа обе ноты подсвечиваются на клавиатуре — сыграйте их сами, чтобы запомнить звучание.'],
@@ -1375,16 +1387,29 @@ function loadH2P() {
   }));
 }
 let downloadsP = null;
+// сохранение файла: на claude.ai — через окно подтверждения, на обычном сайте браузер скачивает сам
+async function fileSaver() {
+  if (!IN_CLAUDE) return async (filename, data) => {
+    const blob = data instanceof Blob ? data : new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob); const a = document.createElement('a');
+    a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  };
+  if (!downloadsP) downloadsP = window.claude.use('downloads');
+  const dl = await downloadsP;
+  return dl ? (filename, data) => dl.save({ filename, data }) : null;
+}
+function saveError(e, fallback) {
+  if (e && e.code === 'declined') toast('Сохранение отменено');
+  else if (e && e.code === 'rate_limited') toast('Окно сохранения уже открыто');
+  else toast(fallback);
+}
 async function makePdf(id, btn) {
   const d = DOCS.find(x => x.id === id); if (!d) return;
   const old = btn.textContent; btn.disabled = true; btn.textContent = 'Готовлю…';
   try {
-    let dl = null;
-    if (IN_CLAUDE) {
-      if (!downloadsP) downloadsP = window.claude.use('downloads');
-      dl = await downloadsP;
-      if (!dl) { toast('В этом окне сохранение файлов недоступно. Откройте версию сайта на GitHub Pages.'); return; }
-    }
+    const saveFile = await fileSaver();
+    if (!saveFile) { toast('В этом окне сохранение файлов недоступно. Откройте версию сайта на GitHub Pages.'); return; }
     const [lib, html] = await Promise.all([loadH2P(), getDoc(d)]);
     const box = document.createElement('div'); box.className = 'doc pdf-src'; box.innerHTML = html;
     document.body.appendChild(box);
@@ -1398,19 +1423,47 @@ async function makePdf(id, btn) {
       }).from(box).outputPdf('blob');
     } finally { box.remove(); }
     const filename = d.title.replace(/[«»:"\/\\?*|<>]/g, '').replace(/\s+/g, ' ').trim() + '.pdf';
-    if (dl) await dl.save({ filename, data: blob });
-    else { // обычный сайт (GitHub Pages): браузер скачивает файл сам
-      const url = URL.createObjectURL(blob); const a = document.createElement('a');
-      a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
-    }
+    await saveFile(filename, blob);
     toast('PDF сохранён');
-  } catch (e) {
-    if (e && e.code === 'declined') toast('Сохранение отменено');
-    else if (e && e.code === 'rate_limited') toast('Окно сохранения уже открыто');
-    else toast('Не удалось подготовить PDF. Попробуйте ещё раз.');
-  } finally { btn.disabled = false; btn.textContent = old; }
+  } catch (e) { saveError(e, 'Не удалось подготовить PDF. Попробуйте ещё раз.'); }
+  finally { btn.disabled = false; btn.textContent = old; }
 }
+
+/* ---------- перенос прогресса файлом ---------- */
+const summary = o => {
+  let n = 0; [o.notes, o.ear, o.sing].forEach(x => Object.values(x || {}).forEach(v => n += v.s || 0));
+  return `${n} ответов, уроков пройдено: ${Object.keys(o.lessons || {}).length}`;
+};
+$('#exp-btn').addEventListener('click', async e => {
+  const btn = e.currentTarget; btn.disabled = true;
+  try {
+    const saveFile = await fileSaver();
+    if (!saveFile) { toast('В этом окне сохранение файлов недоступно. Откройте версию сайта на GitHub Pages.'); return; }
+    await saveFile(`klavir-progress-${todayKey()}.json`, JSON.stringify({ app: 'klavir', ...S }, null, 1));
+    toast('Файл с прогрессом сохранён');
+  } catch (err) { saveError(err, 'Не удалось сохранить файл. Попробуйте ещё раз.'); }
+  finally { btn.disabled = false; }
+});
+let pendingImport = null;
+$('#imp-btn').addEventListener('click', () => $('#imp-file').click());
+$('#imp-file').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  let o = null;
+  try { o = JSON.parse(await f.text()); } catch (err) {}
+  if (!o || o.app !== 'klavir' || !o.settings) { toast('Это не файл прогресса «Клавира». Выберите файл klavir-progress-….json.'); return; }
+  pendingImport = o;
+  const when = o.updatedAt ? new Date(o.updatedAt).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : 'без даты';
+  $('#imp-text').textContent = `Файл от ${when}: ${summary(o)}. Прогресс на этом устройстве (${summary(S)}) будет заменён.`;
+  $('#imp-confirm').hidden = false;
+});
+$('#imp-no').addEventListener('click', () => { pendingImport = null; $('#imp-confirm').hidden = true; });
+$('#imp-yes').addEventListener('click', () => {
+  if (!pendingImport) return;
+  const o = { ...pendingImport }; delete o.app;
+  S = merge(DEF(), o); NT.target = null; ET.q = null; LS = null; SG.target = null;
+  pendingImport = null; $('#imp-confirm').hidden = true;
+  save(); applySettings(); renderSection(); toast('Прогресс загружен');
+});
 
 /* ---------- мелочи ---------- */
 let toastT = null;
