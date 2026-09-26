@@ -255,8 +255,15 @@ body.with-kb .toast{bottom:calc(210px + env(safe-area-inset-bottom,0px))}
   .sec-head h1{font-size:28px}
   .brand{font-size:22px}
   .doc{padding:18px}
-  .kb{--kw:30px; height:130px}
-  body.with-kb .toast{bottom:calc(190px + env(safe-area-inset-bottom,0px))}
+  .kb{--kw:30px; height:112px}
+  body.with-kb .toast{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
+  /* телефон: шапка не прилипает, строка про клавиши компьютера скрыта — больше места под задание */
+  .top{position:static}
+  .top .wrap{gap:8px}
+  .gear{margin-left:auto}
+  nav.tabs{order:3; flex-basis:100%}
+  .dock-info{display:none}
+  .kb-wrap{padding-top:6px}
 }
 @media (prefers-reduced-motion: reduce){ .wk.hint, .bk.hint{animation:none; outline:3px solid #2C4AA6; outline-offset:-3px} }
 </style>
