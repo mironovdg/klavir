@@ -129,6 +129,23 @@ main{padding-block:24px 32px}
 .kv{display:grid; grid-template-columns:1fr auto; gap:4px 12px; font-size:14px; font-variant-numeric:tabular-nums}
 .kv dt{color:var(--muted)} .kv dd{margin:0; text-align:right}
 
+/* уровни и шаги */
+.lv-panel{margin-bottom:14px; display:grid; gap:10px}
+.lv-head{display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap}
+.lv-head h3{font-size:22px}
+.lv-chips{display:flex; gap:6px; flex-wrap:wrap}
+.lv-chips button{min-width:38px; padding:5px 8px; border-radius:999px; border:1px solid var(--line); background:var(--surface); font-size:13px; font-variant-numeric:tabular-nums}
+.lv-chips button.done{background:var(--ok-soft); border-color:var(--ok); color:var(--ok)}
+.lv-chips button[aria-pressed="true"]{background:var(--ink); color:var(--bg); border-color:var(--ink)}
+.lv-chips button:disabled{opacity:.4; cursor:default}
+.lv-goal{font-size:14px; font-variant-numeric:tabular-nums}
+.st-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:6px; margin-top:12px}
+.st-grid button{border:1px solid var(--line); background:var(--surface); border-radius:8px; padding:9px 6px; font-weight:500}
+.st-grid button:hover{border-color:var(--accent)}
+.st-grid button.ok{background:var(--ok-soft); border-color:var(--ok)}
+.st-grid button.bad{background:var(--bad-soft); border-color:var(--bad)}
+.st-rule{font-size:13.5px; margin:10px 0 0}
+
 /* слух */
 .iv-grid{display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin-top:14px}
 .iv-grid button{border:1px solid var(--line); background:var(--surface); border-radius:8px; padding:8px 0 6px; line-height:1.2}
@@ -338,7 +355,15 @@ body.with-kb .toast{bottom:calc(210px + env(safe-area-inset-bottom,0px))}
   <section class="sec" id="sec-notes" hidden>
     <div class="sec-head"><h1>Чтение нот</h1><button class="help" data-help="notes" aria-expanded="false" aria-label="Подсказка">?</button></div>
     <div class="hint" data-hint="notes" hidden></div>
-    <div class="row" style="margin-bottom:14px">
+    <div class="row" style="margin-bottom:10px">
+      <div class="seg" role="group" aria-label="Что тренировать" id="nt-kind">
+        <button data-v="names">Названия нот</button><button data-v="steps">Шаги и скачки</button>
+      </div>
+      <div class="seg" role="group" aria-label="Порядок" id="nt-mode">
+        <button data-v="levels">По уровням</button><button data-v="free">Свободно</button>
+      </div>
+    </div>
+    <div class="row" id="nt-free-opts" style="margin-bottom:14px">
       <div class="seg" role="group" aria-label="Ключ" id="nt-clef">
         <button data-v="treble">Скрипичный</button><button data-v="bass">Басовый</button><button data-v="both">Оба</button>
       </div>
@@ -346,16 +371,30 @@ body.with-kb .toast{bottom:calc(210px + env(safe-area-inset-bottom,0px))}
         <button data-v="staff">На линейках</button><button data-v="ext">С добавочными</button>
       </div>
     </div>
+    <div class="panel lv-panel" id="nt-level" hidden>
+      <div class="lv-head">
+        <div><div class="label" id="lv-num">Уровень 1 из 9</div><h3 id="lv-title"></h3><span class="muted" id="lv-desc"></span></div>
+        <button class="btn" id="lv-ref" aria-expanded="false">Показать ноты уровня</button>
+      </div>
+      <div class="lv-chips" id="lv-chips" role="group" aria-label="Уровни"></div>
+      <div id="lv-ref-box" hidden></div>
+      <div class="lv-goal"><span id="lv-goal"></span><div class="meter"><i id="lv-bar" style="width:0; background:var(--ok)"></i></div></div>
+      <div id="lv-next" hidden style="margin-top:10px"></div>
+    </div>
     <div class="trainer">
       <div class="stage">
         <div id="nt-staff"></div>
         <div class="fb" id="nt-fb" aria-live="polite">Нажмите клавишу, которая соответствует ноте.</div>
         <div class="names" id="nt-names"></div>
+        <div id="st-box" hidden>
+          <div class="st-grid" id="st-btns"></div>
+          <p class="muted st-rule"><b>Шаг</b> — с линейки на соседний промежуток или наоборот: соседняя белая клавиша. <b>Через одну</b> — с линейки на линейку или с промежутка на промежуток: одну белую пропускаем. <b>Скачок</b> — ещё дальше. Можно ответить кнопкой или сразу нажать вторую ноту на клавиатуре.</p>
+        </div>
       </div>
       <div class="side">
         <div class="panel">
           <div class="label">Задание дня</div>
-          <div style="font-variant-numeric:tabular-nums; margin-top:4px"><b id="nt-day">0</b> из 30 нот</div>
+          <div style="font-variant-numeric:tabular-nums; margin-top:4px"><b id="nt-day">0</b> <span id="nt-day-of">из 30 нот</span></div>
           <div class="meter"><i id="nt-day-bar" style="width:0"></i></div>
         </div>
         <div class="panel">
@@ -545,8 +584,9 @@ const KEY = 'klavir-v1';
 const DEF = () => ({
   v: 1, updatedAt: 0,
   settings: { names: 'ru', labels: 'c', vol: 0.8 },
-  notes: {}, ear: {}, sing: {}, lessons: {}, days: {}, docsRead: {},
-  noteCfg: { clef: 'treble', range: 'staff' },
+  notes: {}, ear: {}, sing: {}, steps: {}, lessons: {}, days: {}, docsRead: {},
+  noteCfg: { clef: 'treble', range: 'staff', kind: 'names', mode: 'levels' },
+  lv: { cur: 0, max: 0, done: {}, h: {} },
   earCfg: { set: [4, 5, 7, 12], mode: 'up' },
   singCfg: { mode: 'ear', voice: 'low' },
   metro: { bpm: 80, beats: 4 }
@@ -605,13 +645,14 @@ const fmtDate = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2
 const todayKey = () => fmtDate(new Date());
 function day() {
   const k = todayKey();
-  if (!S.days[k]) S.days[k] = { notes: 0, ear: 0, sing: 0, lessons: [] };
+  if (!S.days[k]) S.days[k] = { notes: 0, ear: 0, sing: 0, steps: 0, lessons: [] };
   if (S.days[k].sing == null) S.days[k].sing = 0;
+  if (S.days[k].steps == null) S.days[k].steps = 0;
   return S.days[k];
 }
-function dayRO() { const d = S.days[todayKey()] || { notes: 0, ear: 0, lessons: [] }; return { sing: 0, ...d }; }
+function dayRO() { const d = S.days[todayKey()] || { notes: 0, ear: 0, lessons: [] }; return { sing: 0, steps: 0, ...d }; }
 function streak() {
-  const has = d => { const x = S.days[fmtDate(d)]; return x && (x.notes || x.ear || x.sing || (x.lessons && x.lessons.length)); };
+  const has = d => { const x = S.days[fmtDate(d)]; return x && (x.notes || x.ear || x.sing || x.steps || (x.lessons && x.lessons.length)); };
   const d = new Date(); let n = 0;
   if (!has(d)) d.setDate(d.getDate() - 1);
   while (has(d)) { n++; d.setDate(d.getDate() - 1); }
@@ -818,8 +859,11 @@ const HINTS = {
     'Прогресс хранится в этом браузере. Чтобы продолжить на другом устройстве: «Настройки» → «Сохранить прогресс в файл», затем на другом устройстве «Загрузить из файла».'],
   lessons: ['Уроки идут в порядке музыкальной школы. Прочитайте объяснение и выполните задание внизу урока на клавиатуре.',
     'В заданиях нажатая нота показывается на нотном стане: зелёная — верно, красная — ошибка.',
-    'Урок засчитывается, когда задание выполнено. Уроки 5–10 появятся позже — они есть в документе «Учебная программа».'],
-  notes: ['На стане появляется нота. Нажмите эту клавишу (октава важна) или кнопку с названием под станом (октава не важна).',
+    'Урок засчитывается, когда задание выполнено. Уроки 7–12 появятся позже — они есть в документе «Учебная программа».',
+    'Если вы начинаете с нуля, проходите уроки по порядку: каждый опирается на предыдущий.'],
+  notes: ['«Названия нот»: на стане появляется нота. Нажмите эту клавишу (октава важна) или кнопку с названием под станом (октава не важна).',
+    '«По уровням» — для начинающих: уровень 1 — три ноты-ориентира, дальше ноты добавляются понемногу. Следующий уровень открывается, когда из последних 20 ответов 18 верны с первого раза и в среднем вы отвечаете не дольше цели (3 с на первых уровнях, 1,5 с на последних). «Показать ноты уровня» — шпаргалка. «Свободно» — любые ноты выбранного ключа.',
+    '«Шаги и скачки»: на стане две ноты, первая подписана. Определите, куда и насколько сдвигается вторая, — кнопкой или сразу нажав вторую ноту на клавиатуре. Правило написано под кнопками.',
     'Нажатая нота сразу появляется на стане: верная — зелёной, неверная — красной рядом с заданной (заданная помечена «?»). Кнопка с названием ставит ноту в ближайшую октаву.',
     'После двух ошибок нужная клавиша начинает мигать. Ноты, в которых вы ошибались, появляются чаще.',
     'Клавиши компьютера: A S D F G H J K — белые от «до» до «до», W E T Y U — чёрные (R пропущена: между ми и фа чёрной клавиши нет), Z и X — октава ниже и выше.'],
@@ -866,7 +910,7 @@ $$('[data-go]').forEach(b => b.addEventListener('click', e => { e.preventDefault
 
 /* ---------- сегодня ---------- */
 function acc(o) { let s = 0, w = 0; Object.values(o).forEach(x => { s += x.s || 0; w += x.w || 0; }); return s ? Math.round(100 * (s - w) / s) + '%' : '—'; }
-function totalAnswers() { let n = 0; [S.notes, S.ear, S.sing].forEach(o => Object.values(o).forEach(x => n += x.s || 0)); return n; }
+function totalAnswers() { let n = 0; [S.notes, S.ear, S.sing, S.steps].forEach(o => Object.values(o).forEach(x => n += x.s || 0)); return n; }
 function nextLesson() { return LESSONS.find(l => l.task && !S.lessons[l.id]) || null; }
 function renderToday() {
   const d = new Date();
@@ -877,13 +921,14 @@ function renderToday() {
     { go: 'lessons', lesson: nl && nl.id, done: lessonDone,
       title: nl ? `Урок ${nl.n}. ${nl.title}` : 'Повторить любой урок',
       sub: nl ? '5–10 минут' : 'Все доступные уроки пройдены', cnt: lessonDone ? 'пройден' : '' },
-    { go: 'notes', done: t.notes >= 30, title: 'Чтение нот', sub: '30 нот, около 3 минут', cnt: `${Math.min(t.notes, 30)} / 30` },
+    { go: 'notes', kind: 'names', done: t.notes >= 30, title: S.noteCfg.mode === 'levels' ? `Чтение нот · уровень ${S.lv.cur + 1}` : 'Чтение нот', sub: '30 нот, около 3 минут', cnt: `${Math.min(t.notes, 30)} / 30` },
+    ...(S.lessons.st ? [{ go: 'notes', kind: 'steps', done: t.steps >= 10, title: 'Шаги и скачки', sub: '10 заданий', cnt: `${Math.min(t.steps, 10)} / 10` }] : []),
     { go: 'ear', done: t.ear >= 10, title: 'Интервалы на слух', sub: '10 заданий', cnt: `${Math.min(t.ear, 10)} / 10` },
     { go: 'sing', done: t.sing >= 10, title: 'Пение нот', sub: '10 нот голосом, нужен микрофон', cnt: `${Math.min(t.sing, 10)} / 10` }
   ];
   $('#plan').innerHTML = items.map((it, i) => `<li><button data-i="${i}" class="${it.done ? 'done' : ''}"><span class="tick">✓</span><span>${it.title}<small>${it.sub}</small></span><span class="cnt">${it.cnt}</span></button></li>`).join('');
   $$('#plan button').forEach(b => b.addEventListener('click', () => {
-    const it = items[+b.dataset.i]; go(it.go); if (it.lesson) openLesson(it.lesson);
+    const it = items[+b.dataset.i]; if (it.kind) { S.noteCfg.kind = it.kind; save(); } go(it.go); if (it.lesson) openLesson(it.lesson);
   }));
   const doneLessons = Object.keys(S.lessons).length;
   $('#stats').innerHTML = [
@@ -899,23 +944,39 @@ function renderToday() {
   $('#weak').innerHTML = weak.length ? weak.slice(0, 8).map(w => `<span class="chip bad">${w.t} · ${Math.round(w.r * 100)}%</span>`).join('') : '<span class="muted" style="font-size:14px">Пока мало ответов. Список появится после нескольких занятий.</span>';
 }
 function octLabel(m) { return S.settings.names === 'ru' ? OCT_TAG[octOf(m)] : octOf(m); }
-function todayMinutesText() { const t = dayRO(); return (t.notes || 0) + (t.ear || 0) + (t.sing || 0); }
+function todayMinutesText() { const t = dayRO(); return (t.notes || 0) + (t.ear || 0) + (t.sing || 0) + (t.steps || 0); }
 
 /* ---------- тренажёр нот ---------- */
 const NT = { target: null, clef: 'treble', wrong: 0, t0: 0, last: null, lock: false, run: 0, times: [] };
+const whites = (a, b) => { const o = []; for (let m = a; m <= b; m++) if (isWhite(m)) o.push(m); return o; };
+const tr = ms => ms.map(m => ['treble', m]), bs = ms => ms.map(m => ['bass', m]);
+// уровни: от нот-ориентиров к целому стану; goal — средняя скорость ответа, секунд
+const LEVELS = [
+  { t: 'Ориентиры скрипичного ключа', d: 'до первой, соль первой и до второй октавы', notes: tr([60, 67, 72]), goal: 3 },
+  { t: 'Ориентиры басового ключа', d: 'до малой, фа малой и до первой октавы', notes: bs([48, 53, 60]), goal: 3 },
+  { t: 'Все ориентиры', d: 'шесть нот в обоих ключах вперемешку', notes: [...tr([60, 67, 72]), ...bs([48, 53, 60])], goal: 3 },
+  { t: 'Скрипичный: соседи ориентиров', d: 'ориентиры и ноты на шаг выше и ниже них', notes: tr([60, 62, 65, 67, 69, 71, 72, 74]), goal: 2.5 },
+  { t: 'Басовый: соседи ориентиров', d: 'ориентиры и ноты на шаг выше и ниже них', notes: bs([47, 48, 50, 52, 53, 55, 59, 60]), goal: 2.5 },
+  { t: 'Скрипичный ключ целиком', d: 'от до первой до соль второй октавы', notes: tr(whites(60, 79)), goal: 2 },
+  { t: 'Басовый ключ целиком', d: 'от фа большой до до первой октавы', notes: bs(whites(41, 60)), goal: 2 },
+  { t: 'Оба ключа вперемешку', d: 'все ноты двух предыдущих уровней', notes: [...tr(whites(60, 79)), ...bs(whites(41, 60))], goal: 1.5 },
+  { t: 'Добавочные линейки', d: 'ноты выше и ниже стана', notes: [...tr(whites(55, 84)), ...bs(whites(36, 64))], goal: 1.5 }
+];
+const LV_WIN = 20, LV_OK = 18; // из последних 20 ответов — 18 верных с первого раза
 function notePool(clef) {
   const r = S.noteCfg.range === 'staff' ? (clef === 'treble' ? [64, 77] : [43, 57]) : (clef === 'treble' ? [57, 84] : [36, 64]);
-  const out = []; for (let m = r[0]; m <= r[1]; m++) if (isWhite(m)) out.push(m); return out;
+  return whites(r[0], r[1]);
 }
 function pickWeighted(c) { const sum = c.reduce((a, x) => a + x.w, 0); let r = Math.random() * sum; for (const x of c) { r -= x.w; if (r <= 0) return x; } return c[c.length - 1]; }
 function nextNote() {
-  const clefs = S.noteCfg.clef === 'both' ? ['treble', 'bass'] : [S.noteCfg.clef];
   const cand = [];
-  clefs.forEach(c => notePool(c).forEach(m => {
+  const push = (c, m) => {
     if (NT.last && NT.last.c === c && NT.last.m === m) return;
     const st = S.notes[c[0] + m] || { s: 0, w: 0 };
     cand.push({ c, m, w: 1 + 4 * (st.w / (st.s + 1)) + (st.s < 2 ? 0.8 : 0) });
-  }));
+  };
+  if (S.noteCfg.mode === 'levels') LEVELS[S.lv.cur].notes.forEach(([c, m]) => push(c, m));
+  else (S.noteCfg.clef === 'both' ? ['treble', 'bass'] : [S.noteCfg.clef]).forEach(c => notePool(c).forEach(m => push(c, m)));
   const p = pickWeighted(cand);
   NT.target = p.m; NT.clef = p.c; NT.wrong = 0; NT.lock = false; NT.t0 = performance.now(); NT.last = p;
   clearMarks('hint');
@@ -931,10 +992,62 @@ function drawNote(ans) {
 }
 // нота с тем же названием в октаве, ближайшей к m
 const nearestPc = (pc, m) => { let x = m - ((m - pc) % 12 + 12) % 12; if (m - x > 6) x += 12; return x; };
+const sec = ms => (ms / 1000).toFixed(1).replace('.', ',') + ' с';
+
+/* уровни */
+function lvStats(i) {
+  const h = S.lv.h[i] || []; if (!h.length) return null;
+  return { n: h.length, ok: h.filter(x => x[0]).length, avg: h.reduce((a, x) => a + x[1], 0) / h.length };
+}
+function lvRecord(ok, ms) {
+  const i = S.lv.cur; const h = S.lv.h[i] || (S.lv.h[i] = []);
+  h.push([ok ? 1 : 0, Math.round(ms)]); if (h.length > LV_WIN) h.shift();
+  const st = lvStats(i);
+  if (S.lv.done[i] || st.n < LV_WIN || st.ok < LV_OK || st.avg > LEVELS[i].goal * 1000) return false;
+  S.lv.done[i] = true; S.lv.max = Math.min(LEVELS.length - 1, Math.max(S.lv.max, i + 1));
+  return true;
+}
+function setLevel(k) { S.lv.cur = k; save(); NT.last = null; $('#lv-next').hidden = true; renderLevel(); nextNote(); renderNoteSide(); }
+function renderLevel() {
+  const i = S.lv.cur, L = LEVELS[i];
+  $('#lv-num').textContent = `Уровень ${i + 1} из ${LEVELS.length}` + (S.lv.done[i] ? ' · пройден' : '');
+  $('#lv-title').textContent = L.t; $('#lv-desc').textContent = L.d;
+  $('#lv-chips').innerHTML = LEVELS.map((x, k) => `<button data-lv="${k}" aria-pressed="${k === i}" class="${S.lv.done[k] ? 'done' : ''}" title="${x.t}" ${k > S.lv.max ? 'disabled' : ''}>${k + 1}</button>`).join('');
+  $$('#lv-chips button').forEach(b => b.addEventListener('click', () => setLevel(+b.dataset.lv)));
+  const st = lvStats(i);
+  $('#lv-goal').textContent = `Цель: из последних ${LV_WIN} ответов не меньше ${LV_OK} верных с первого раза, в среднем не дольше ${String(L.goal).replace('.', ',')} с на ноту. `
+    + (st ? `Сейчас: ${st.ok} из ${st.n} верно, в среднем ${sec(st.avg)}.` : 'Ответов на этом уровне пока нет.');
+  $('#lv-bar').style.width = (st ? Math.min(1, st.n / LV_WIN) * 100 : 0) + '%';
+  if (!$('#lv-ref-box').hidden) drawLevelRef();
+}
+function drawLevelRef() {
+  const L = LEVELS[S.lv.cur];
+  $('#lv-ref-box').innerHTML = ['treble', 'bass'].map(c => {
+    const ms = L.notes.filter(n => n[0] === c).map(n => n[1]).sort((a, b) => a - b);
+    return ms.length ? `<div style="max-width:520px">${staffSVG(c, ms, { w: Math.max(260, 70 + ms.length * 34), labels: true })}</div>` : '';
+  }).join('');
+}
+$('#lv-ref').addEventListener('click', () => {
+  const box = $('#lv-ref-box'); box.hidden = !box.hidden;
+  $('#lv-ref').setAttribute('aria-expanded', String(!box.hidden));
+  $('#lv-ref').textContent = box.hidden ? 'Показать ноты уровня' : 'Скрыть ноты уровня';
+  if (!box.hidden) drawLevelRef();
+});
+
 function renderNoteSide() {
   const t = dayRO();
-  $('#nt-day').textContent = t.notes; $('#nt-day-bar').style.width = Math.min(100, t.notes / 30 * 100) + '%';
-  const avg = NT.times.length ? (NT.times.reduce((a, b) => a + b, 0) / NT.times.length / 1000).toFixed(1).replace('.', ',') + ' с' : '—';
+  if (S.noteCfg.kind === 'steps') {
+    $('#nt-day').textContent = t.steps; $('#nt-day-of').textContent = 'из 10 заданий';
+    $('#nt-day-bar').style.width = Math.min(100, t.steps / 10 * 100) + '%';
+    $('#nt-kv').innerHTML = STEP_KINDS.map(([k, , name]) => {
+      let s = 0, w = 0; ['+', '-'].forEach(d => { const x = S.steps[k + d]; if (x) { s += x.s; w += x.w; } });
+      return `<dt>${name}</dt><dd>${s ? Math.round(100 * (s - w) / s) + '% из ' + s : '—'}</dd>`;
+    }).join('');
+    return;
+  }
+  $('#nt-day').textContent = t.notes; $('#nt-day-of').textContent = 'из 30 нот';
+  $('#nt-day-bar').style.width = Math.min(100, t.notes / 30 * 100) + '%';
+  const avg = NT.times.length ? sec(NT.times.reduce((a, b) => a + b, 0) / NT.times.length) : '—';
   $('#nt-kv').innerHTML = `<dt>Подряд без ошибок</dt><dd>${NT.run}</dd><dt>Среднее время (10 последних)</dt><dd>${avg}</dd><dt>Точность за всё время</dt><dd>${acc(S.notes)}</dd>`;
 }
 function noteAnswer(m, byName) {
@@ -948,12 +1061,16 @@ function noteAnswer(m, byName) {
     st.s++; if (NT.wrong) st.w++;
     const ms = performance.now() - NT.t0; NT.times.push(ms); if (NT.times.length > 10) NT.times.shift();
     NT.run = NT.wrong ? 0 : NT.run + 1;
-    day().notes++; save();
+    day().notes++;
+    const passed = S.noteCfg.mode === 'levels' && lvRecord(!NT.wrong, ms);
+    save();
     if (byName) playNote(NT.target, 0.7);
     flash(NT.target, 'ok', 500); drawNote({ m: NT.target });
-    fb.className = 'fb ok'; fb.textContent = `Верно: ${fullName(NT.target)} · ${(ms / 1000).toFixed(1).replace('.', ',')} с`;
+    fb.className = 'fb ok'; fb.textContent = `Верно: ${fullName(NT.target)} · ${sec(ms)}`;
+    if (S.noteCfg.mode === 'levels') renderLevel();
+    if (passed) levelPassed();
     renderNoteSide();
-    setTimeout(() => { if (curSec === 'notes') nextNote(); }, 900);
+    setTimeout(() => { if (curSec === 'notes' && S.noteCfg.kind === 'names') nextNote(); }, 900);
   } else {
     NT.wrong++; NT.run = 0;
     fb.className = 'fb bad';
@@ -964,22 +1081,107 @@ function noteAnswer(m, byName) {
     renderNoteSide();
   }
 }
+function levelPassed() {
+  const i = S.lv.cur, box = $('#lv-next');
+  toast(`Уровень ${i + 1} пройден!`);
+  if (i < LEVELS.length - 1) {
+    box.innerHTML = `<div class="row"><span class="st st-done">уровень ${i + 1} пройден</span><button class="btn primary" id="lv-go">Перейти на уровень ${i + 2}: ${LEVELS[i + 1].t}</button></div>`;
+    $('#lv-go').addEventListener('click', () => setLevel(i + 1));
+  } else box.innerHTML = '<span class="st st-done">все уровни пройдены</span> <span class="muted">Дальше — «Свободно» с добавочными линейками.</span>';
+  box.hidden = false;
+}
+
+/* шаги и скачки: две ноты на стане, определить расстояние и направление */
+const STEP_KINDS = [['s', 1, 'Шаг'], ['k', 2, 'Через одну'], ['l', 3, 'Скачок']];
+const ST = { a: null, b: null, clef: 'treble', key: null, wrong: 0, lock: false };
+function whiteMove(m, n) { let x = m; const d = Math.sign(n); for (let i = 0; i < Math.abs(n); i++) { do { x += d; } while (!isWhite(x)); } return x; }
+const stepName = key => `${STEP_KINDS.find(x => x[0] === key[0])[2].toLowerCase()} ${key[1] === '+' ? 'вверх' : 'вниз'}`;
+function buildStepButtons() {
+  $('#st-btns').innerHTML = STEP_KINDS.map(([k, , t]) => `<button data-k="${k}+">${t} вверх ↑</button><button data-k="${k}-">${t} вниз ↓</button>`).join('');
+  $$('#st-btns button').forEach(b => b.addEventListener('click', () => { ac(); stepAnswer(b.dataset.k, b); }));
+}
+function nextStep() {
+  const clefs = S.noteCfg.clef === 'both' ? ['treble', 'bass'] : [S.noteCfg.clef];
+  const cand = [];
+  STEP_KINDS.forEach(([k]) => ['+', '-'].forEach(d => { const st = S.steps[k + d] || { s: 0, w: 0 }; cand.push({ key: k + d, w: 1 + 4 * (st.w / (st.s + 1)) + (st.s < 2 ? 0.8 : 0) }); }));
+  for (let tries = 0; tries < 60; tries++) {
+    const c = clefs[rnd(0, clefs.length - 1)]; const [lo, hi] = c === 'treble' ? [60, 79] : [41, 60];
+    const key = pickWeighted(cand).key; const n = key[0] === 's' ? 1 : key[0] === 'k' ? 2 : rnd(3, 4);
+    const pool = whites(lo, hi); const a = pool[rnd(0, pool.length - 1)]; const b = whiteMove(a, key[1] === '+' ? n : -n);
+    if (b < lo || b > hi) continue;
+    Object.assign(ST, { a, b, clef: c, key, wrong: 0, lock: false });
+    break;
+  }
+  clearMarks('hint');
+  $$('#st-btns button').forEach(b => b.classList.remove('ok', 'bad'));
+  drawStep();
+  const fb = $('#nt-fb'); fb.className = 'fb'; fb.textContent = 'Первая нота подписана. Куда и насколько сдвигается вторая?';
+  scrollKbTo(ST.a);
+}
+function drawStep(ok) {
+  $('#nt-staff').innerHTML = staffSVG(ST.clef, [{ m: ST.a, label: nm(ST.a) }, { m: ST.b, label: ok ? nm(ST.b) : '?', cls: ok ? 'ok' : '' }], { w: 260 });
+}
+function stepKey(m) {
+  if (ST.lock || ST.a == null) return;
+  if (m === ST.a) { const fb = $('#nt-fb'); fb.className = 'fb'; fb.textContent = `Это первая нота, ${nm(ST.a)}. Теперь сдвиньтесь от неё ко второй.`; return; }
+  stepAnswer(null, null, m);
+}
+function stepAnswer(key, btn, m) {
+  if (ST.lock || ST.a == null) return;
+  const ok = m != null ? m === ST.b : key === ST.key;
+  const fb = $('#nt-fb');
+  if (ok) {
+    ST.lock = true;
+    const st = S.steps[ST.key] || (S.steps[ST.key] = { s: 0, w: 0 }); st.s++; if (ST.wrong) st.w++;
+    day().steps++; save();
+    const t = ac().currentTime + 0.02; playNote(ST.a, 0.5, t); playNote(ST.b, 0.8, t + 0.45);
+    flash(ST.b, 'ok', 800); drawStep(true);
+    $$('#st-btns button').forEach(b => { if (b.dataset.k === ST.key) b.classList.add('ok'); });
+    fb.className = 'fb ok'; fb.textContent = `Верно: ${stepName(ST.key)} — от ${nm(ST.a)} к ${nm(ST.b)}`;
+    renderNoteSide();
+    setTimeout(() => { if (curSec === 'notes' && S.noteCfg.kind === 'steps') nextStep(); }, 1400);
+  } else {
+    ST.wrong++; fb.className = 'fb bad';
+    if (m != null) { flash(m, 'bad', 500); fb.textContent = `Нажата ${fullName(m)}. Найдите первую ноту — ${nm(ST.a)} — и сдвиньтесь от неё.`; }
+    else { btn.classList.add('bad'); fb.textContent = `Не ${stepName(key)}. Посмотрите, выше или ниже вторая нота и сколько мест между ними.`; }
+    if (ST.wrong >= 2) { fb.textContent = `Правильно: ${stepName(ST.key)}. Вторая нота — ${fullName(ST.b)}, клавиша мигает.`; keyEl[ST.b] && keyEl[ST.b].classList.add('hint'); scrollKbTo(ST.b); }
+    renderNoteSide();
+  }
+}
+
+/* переключатели раздела */
 function segInit(id, get, set) {
   const g = $('#' + id);
   const paint = () => $$('button', g).forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === String(get()))));
   $$('button', g).forEach(b => b.addEventListener('click', () => { set(b.dataset.v); paint(); }));
   return paint;
 }
-const paintClef = segInit('nt-clef', () => S.noteCfg.clef, v => { S.noteCfg.clef = v; save(); NT.last = null; nextNote(); });
+const paintKind = segInit('nt-kind', () => S.noteCfg.kind, v => { S.noteCfg.kind = v; save(); enterNotes(); });
+const paintMode = segInit('nt-mode', () => S.noteCfg.mode, v => { S.noteCfg.mode = v; save(); NT.last = null; NT.target = null; enterNotes(); });
+const paintClef = segInit('nt-clef', () => S.noteCfg.clef, v => { S.noteCfg.clef = v; save(); NT.last = null; if (S.noteCfg.kind === 'steps') nextStep(); else nextNote(); });
 const paintRange = segInit('nt-range', () => S.noteCfg.range, v => { S.noteCfg.range = v; save(); NT.last = null; nextNote(); });
 function buildNameButtons() {
   $('#nt-names').innerHTML = WHITE_PCS.map(pc => `<button data-pc="${pc}">${NAMES[S.settings.names][pc]}</button>`).join('');
   $$('#nt-names button').forEach(b => b.addEventListener('click', () => { ac(); noteAnswer(+b.dataset.pc + 60, true); }));
 }
 function enterNotes() {
-  paintClef(); paintRange(); buildNameButtons();
-  handler = m => noteAnswer(m, false);
-  if (NT.target == null) nextNote(); else { drawNote(); scrollKbTo(NT.target); }
+  const steps = S.noteCfg.kind === 'steps', levels = S.noteCfg.mode === 'levels';
+  paintKind(); paintMode(); paintClef(); paintRange(); buildNameButtons();
+  $('#nt-mode').hidden = steps;
+  $('#nt-level').hidden = steps || !levels;
+  $('#nt-free-opts').hidden = !steps && levels;
+  $('#nt-range').hidden = steps;
+  $('#nt-names').hidden = steps;
+  $('#st-box').hidden = !steps;
+  clearMarks('hint');
+  handler = m => S.noteCfg.kind === 'steps' ? stepKey(m) : noteAnswer(m, false);
+  if (steps) { if (ST.a == null) nextStep(); else { drawStep(ST.lock); scrollKbTo(ST.a); } }
+  else {
+    if (levels) renderLevel();
+    const inLevel = NT.target != null && (!levels || LEVELS[S.lv.cur].notes.some(n => n[0] === NT.clef && n[1] === NT.target));
+    if (!inLevel) nextNote(); else { drawNote(); scrollKbTo(NT.target); }
+    const fb = $('#nt-fb'); if (!NT.lock) { fb.className = 'fb'; fb.textContent = 'Нажмите клавишу, которая соответствует ноте.'; }
+  }
   renderNoteSide();
 }
 
@@ -1270,13 +1472,47 @@ const LESSONS = [
 <p>На первой линейке — соль большой октавы, на пятой — ля малой. До первой октавы — на первой добавочной линейке сверху. Это та же самая клавиша, что и до первой в скрипичном ключе: два ключа встречаются на ней.</p>
 <div class="ill" data-clef="bass" data-notes="57,59,60"></div>`,
     task: { type: 'staff', clef: 'bass', notes: [53, 43, 48, 57, 50, 60, 55], title: 'Задание', text: 'Нажимайте на клавиатуре ноты, которые появляются на стане.' } },
-  { id: 'l5', n: 5, title: 'Длительности и паузы', short: 'Целая, половинная, четверть, восьмая' },
-  { id: 'l6', n: 6, title: 'Размер и такт', short: 'Сильная доля, 2/4, 3/4, 4/4, тренажёр ритма' },
-  { id: 'l7', n: 7, title: 'Диез, бемоль, бекар', short: 'Чёрные клавиши и их названия' },
-  { id: 'l8', n: 8, title: 'Тон и полутон', short: 'Строение мажорной гаммы' },
-  { id: 'l9', n: 9, title: 'Тональности', short: 'Ключевые знаки и квинтовый круг' },
-  { id: 'l10', n: 10, title: 'Трезвучия', short: 'Мажорные и минорные аккорды, обращения' }
+  { id: 'lm', n: 5, title: 'Ориентиры', short: 'Пять нот, от которых находят все остальные',
+    body: `<p>Нот на стане много, и запоминать каждую по отдельности трудно и долго. Музыканты поступают иначе: твёрдо знают несколько нот-<b>ориентиров</b>, а остальные находят от них.</p>
+<p>Для начала хватит пяти ориентиров. Три из них — в скрипичном ключе:</p>
+<div class="ill" data-clef="treble" data-notes="60,67,72"></div>
+<ul>
+<li><b>До первой октавы</b> — на короткой линейке под станом. Это середина клавиатуры.</li>
+<li><b>Соль первой октавы</b> — на второй линейке снизу. Её обвивает завиток скрипичного ключа.</li>
+<li><b>До второй октавы</b> — в третьем промежутке снизу, между третьей и четвёртой линейками.</li>
+</ul>
+<p>Ещё два — в басовом ключе. И снова до первой октавы, теперь над станом:</p>
+<div class="ill" data-clef="bass" data-notes="48,53,60"></div>
+<ul>
+<li><b>До малой октавы</b> — во втором промежутке снизу.</li>
+<li><b>Фа малой октавы</b> — на четвёртой линейке снизу, между двумя точками басового ключа.</li>
+<li><b>До первой октавы</b> — на короткой линейке над станом. Это та же клавиша, что и в скрипичном ключе.</li>
+</ul>
+<p>Увидели незнакомую ноту — найдите ближайший ориентир и посчитайте, на сколько мест она выше или ниже. Как считать, — в следующем уроке.</p>
+<p>После урока тренируйте ориентиры в разделе «Ноты»: первые три уровня — как раз они.</p>`,
+    task: { type: 'staff', title: 'Задание', text: 'Нажимайте на клавиатуре ноты-ориентиры, которые появляются на стане. Ключ иногда меняется — смотрите на него.',
+      items: [['treble', 67], ['bass', 53], ['treble', 60], ['bass', 48], ['treble', 72], ['bass', 60], ['treble', 67], ['bass', 53]] } },
+  { id: 'st', n: 6, title: 'Шаги и скачки', short: 'Как найти ноту по соседней',
+    body: `<p>Каждое место на стане — линейка или промежуток между линейками — это следующая белая клавиша. Поэтому по расстоянию между нотами на стане сразу видно, куда двигать руку.</p>
+<div class="ill" data-clef="treble" data-notes="60,62,64,65,67,69,71,72"></div>
+<ul>
+<li><b>Шаг</b>: нота переходит с линейки на соседний промежуток или с промежутка на соседнюю линейку. На клавиатуре это соседняя белая клавиша. Музыканты называют такое расстояние <i>секундой</i>.</li>
+<li><b>Через одну</b>: с линейки на соседнюю линейку или с промежутка на соседний промежуток. На клавиатуре одну белую клавишу пропускаем. Это <i>терция</i>.</li>
+<li><b>Скачок</b>: нота ещё дальше. Считайте места на стане по одному: каждое место — следующая белая клавиша.</li>
+</ul>
+<p>Например, от соли первой октавы (вторая линейка) до ля — шаг вверх, до си (третья линейка) — через одну вверх.</p>
+<p>Так читают ноты и опытные музыканты: смотрят не на каждую ноту отдельно, а на то, куда и насколько сдвигается мелодия. После урока тренируйте это в разделе «Ноты» → «Шаги и скачки».</p>`,
+    task: { type: 'pair', title: 'Задание', text: 'Первая нота подписана. Найдите её на клавиатуре, посмотрите, куда и насколько сдвигается вторая, и нажмите вторую.',
+      items: [['treble', 67, 69], ['treble', 67, 65], ['treble', 60, 64], ['treble', 72, 71], ['bass', 53, 55], ['bass', 48, 52], ['treble', 67, 72], ['bass', 60, 57]] } },
+  { id: 'l5', n: 7, title: 'Длительности и паузы', short: 'Целая, половинная, четверть, восьмая' },
+  { id: 'l6', n: 8, title: 'Размер и такт', short: 'Сильная доля, 2/4, 3/4, 4/4, тренажёр ритма' },
+  { id: 'l7', n: 9, title: 'Диез, бемоль, бекар', short: 'Чёрные клавиши и их названия' },
+  { id: 'l8', n: 10, title: 'Тон и полутон', short: 'Строение мажорной гаммы' },
+  { id: 'l9', n: 11, title: 'Тональности', short: 'Ключевые знаки и квинтовый круг' },
+  { id: 'l10', n: 12, title: 'Трезвучия', short: 'Мажорные и минорные аккорды, обращения' }
 ];
+// задание со станом: список [ключ, нота] (или [ключ, первая, вторая] для пар)
+const taskItems = t => t.items || (t.notes || []).map(m => [t.clef, m]);
 let LS = null; // состояние открытого урока
 function renderLessons() {
   if (LS) { renderLessonView(); return; }
@@ -1317,7 +1553,7 @@ function renderLessonView() {
   const lb = $('#ls-list'); if (lb) lb.addEventListener('click', () => { LS = null; renderLessons(); });
   drawTask();
   handler = lessonKey;
-  scrollKbTo(l.task.type === 'staff' ? (l.task.clef === 'treble' ? 67 : 50) : 60);
+  scrollKbTo(l.task.type === 'staff' || l.task.type === 'pair' ? taskItems(l.task)[0][1] : 60);
 }
 function drawTask() {
   const t = LS.l.task; const box = $('#ls-task');
@@ -1325,12 +1561,19 @@ function drawTask() {
     box.innerHTML = pressedStaff() + `<div class="chips">${Array.from({ length: t.need }, (_, i) => { const m = [...LS.found][i]; return `<span class="chip ${m != null ? 'ok' : ''}">${m != null ? fullName(m) : 'до ?'}</span>`; }).join('')}</div>`;
   } else if (t.type === 'seq') {
     box.innerHTML = pressedStaff() + `<div class="chips">${t.notes.map((m, i) => `<span class="chip ${i < LS.i ? 'ok' : i === LS.i && !LS.done ? 'now' : ''}">${nm(m)}${m % 12 === 0 ? ' ' + octLabel(m) : ''}</span>`).join('')}</div>`;
-  } else if (t.type === 'staff') {
-    const m = t.notes[Math.min(LS.i, t.notes.length - 1)];
-    let notes = [m];
-    if (LS.okNote != null) notes = [{ m: LS.okNote, cls: 'ok', label: nm(LS.okNote) }];
-    else if (LS.badNote != null) notes = [{ m, label: '?' }, { m: LS.badNote, cls: 'bad', label: nm(LS.badNote) }];
-    box.innerHTML = staffSVG(t.clef, notes, { w: 260 }) + `<div class="chips">${t.notes.map((_, i) => `<span class="chip ${i < LS.i ? 'ok' : i === LS.i && !LS.done ? 'now' : ''}">${i + 1}</span>`).join('')}</div>`;
+  } else if (t.type === 'staff' || t.type === 'pair') {
+    const items = taskItems(t);
+    // после верного ответа ещё немного показываем прошлое задание зелёным
+    const shown = LS.okNote != null ? items[LS.i - 1] : items[Math.min(LS.i, items.length - 1)];
+    const [c, a, b] = shown; let notes;
+    if (t.type === 'staff') {
+      notes = [a];
+      if (LS.okNote != null) notes = [{ m: a, cls: 'ok', label: nm(a) }];
+      else if (LS.badNote != null) notes = [{ m: a, label: '?' }, { m: LS.badNote, cls: 'bad', label: nm(LS.badNote) }];
+    } else {
+      notes = [{ m: a, label: nm(a) }, LS.okNote != null ? { m: b, cls: 'ok', label: nm(b) } : { m: b, label: '?' }];
+    }
+    box.innerHTML = staffSVG(c, notes, { w: 260 }) + `<div class="chips">${items.map((_, i) => `<span class="chip ${i < LS.i ? 'ok' : i === LS.i && !LS.done ? 'now' : ''}">${i + 1}</span>`).join('')}</div>`;
   }
 }
 // последняя нажатая клавиша на стане (для заданий без нот на стане)
@@ -1350,15 +1593,16 @@ function lessonKey(m) {
       if (LS.found.size >= t.need) return lessonDone();
     } else { LS.pressed = { m, cls: 'bad' }; flash(m, 'bad'); fb.className = 'fb bad'; fb.textContent = `Это ${nm(m)}. «До» — слева от двух чёрных клавиш.`; }
   } else {
-    const want = t.notes[LS.i];
+    const it = taskItems(t)[LS.i]; const want = t.type === 'pair' ? it[2] : it[1];
+    if (t.type === 'pair' && m === it[1]) { fb.className = 'fb'; fb.textContent = `Это первая нота, ${nm(m)}. Теперь сдвиньтесь от неё ко второй.`; return; }
     if (m === want) {
       flash(m, 'ok'); clearMarks('hint'); LS.i++; LS.miss = 0; fb.className = 'fb ok'; fb.textContent = `Верно: ${fullName(m)}`;
       LS.pressed = { m, cls: 'ok' };
-      if (t.type === 'staff') { LS.okNote = m; setTimeout(() => { if (LS && LS.okNote === m && !LS.done) { LS.okNote = null; drawTask(); } }, 700); }
-      if (LS.i >= t.notes.length) return lessonDone();
+      if (t.type === 'staff' || t.type === 'pair') { LS.okNote = m; setTimeout(() => { if (LS && LS.okNote === m && !LS.done) { LS.okNote = null; drawTask(); } }, 700); }
+      if (LS.i >= taskItems(t).length) return lessonDone();
     } else {
       flash(m, 'bad'); LS.miss = (LS.miss || 0) + 1; fb.className = 'fb bad';
-      LS.pressed = { m, cls: 'bad' }; LS.badNote = m;
+      LS.pressed = { m, cls: 'bad' }; if (t.type === 'staff') LS.badNote = m;
       fb.textContent = `Нажата ${fullName(m)}.` + (LS.miss >= 2 ? ' Нужная клавиша мигает.' : ' Попробуйте ещё.');
       if (LS.miss >= 2 && keyEl[want]) { keyEl[want].classList.add('hint'); scrollKbTo(want); }
     }
@@ -1507,7 +1751,7 @@ $('#imp-no').addEventListener('click', () => { pendingImport = null; $('#imp-con
 $('#imp-yes').addEventListener('click', () => {
   if (!pendingImport) return;
   const o = { ...pendingImport }; delete o.app;
-  S = merge(DEF(), o); NT.target = null; ET.q = null; LS = null; SG.target = null;
+  S = merge(DEF(), o); NT.target = null; ET.q = null; LS = null; SG.target = null; ST.a = null;
   pendingImport = null; $('#imp-confirm').hidden = true;
   save(); applySettings(); renderSection(); toast('Прогресс загружен');
 });
@@ -1537,11 +1781,11 @@ $('#reset').addEventListener('click', () => {
   if (!resetArm) { b.textContent = 'Точно сбросить? Нажмите ещё раз'; resetArm = setTimeout(() => { resetArm = null; b.textContent = 'Сбросить прогресс'; }, 4000); return; }
   clearTimeout(resetArm); resetArm = null; b.textContent = 'Сбросить прогресс';
   const keep = { settings: S.settings, docsRead: S.docsRead };
-  S = merge(DEF(), keep); NT.target = null; ET.q = null; LS = null; SG.target = null; save(); applySettings(); renderSection(); toast('Прогресс сброшен');
+  S = merge(DEF(), keep); NT.target = null; ET.q = null; LS = null; SG.target = null; ST.a = null; save(); applySettings(); renderSection(); toast('Прогресс сброшен');
 });
 
 /* ---------- старт ---------- */
-buildKeyboard(); buildEar(); applySettings();
+buildKeyboard(); buildEar(); buildStepButtons(); applySettings();
 const h = (location.hash || '').slice(1);
 go(SECS.includes(h) ? h : 'today');
 loadDocs();
