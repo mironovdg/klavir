@@ -111,7 +111,9 @@ main{padding-block:24px 32px}
 .staff .clef{font-family:var(--music); fill:currentColor}
 .staff .nh{fill:none; stroke:currentColor; stroke-width:2.4}
 .staff .nh.ok{stroke:var(--ok)} .staff .nh.bad{stroke:var(--bad)}
+.staff .acc{font:16px var(--music); fill:currentColor}
 .staff .lbl{font:12px var(--body); fill:var(--muted); text-anchor:middle}
+.staff .acc.ok, .staff .lbl.ok{fill:var(--ok)} .staff .acc.bad, .staff .lbl.bad{fill:var(--bad)}
 .trainer{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:18px; align-items:start}
 .stage{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:14px 18px 18px}
 .stage .staff{max-width:460px; margin:0 auto}
@@ -380,6 +382,7 @@ body.with-kb .toast{bottom:calc(210px + env(safe-area-inset-bottom,0px))}
           <button class="btn" id="ear-show" disabled>Показать ответ</button>
         </div>
         <div class="fb" id="ear-fb" aria-live="polite" style="margin-top:12px">Нажмите «Сыграть» и выберите интервал.</div>
+        <div id="ear-staff" style="max-width:300px; margin:0 auto"></div>
         <div class="iv-grid" id="ear-btns"></div>
       </div>
       <div class="side">
@@ -476,6 +479,7 @@ body.with-kb .toast{bottom:calc(210px + env(safe-area-inset-bottom,0px))}
         <div class="panel">
           <div class="label">Последняя нота</div>
           <div id="last-note" style="font-family:var(--display); font-size:28px; margin-top:4px">—</div>
+          <div id="keys-staff" style="max-width:280px"></div>
         </div>
         <div class="panel">
           <div class="label">MIDI-инструмент</div>
@@ -704,6 +708,7 @@ function press(m, src) {
   active[m] = voice(m);
   keyEl[m] && keyEl[m].classList.add('down');
   $('#last-note').textContent = fullName(m);
+  if (curSec === 'keys') $('#keys-staff').innerHTML = staffSVG(clefFor(m), [{ m, label: nm(m) }], { w: 240 });
   if (src === 'midi') $('#kb-src').textContent = 'Ввод: MIDI';
   if (handler) handler(m);
 }
@@ -770,26 +775,41 @@ $('#midi-btn').addEventListener('click', async () => {
 });
 
 /* ---------- нотный стан ---------- */
+// ступень на стане для любой клавиши: чёрная пишется как диез ближайшей белой снизу
+const diaAny = m => octOf(m) * 7 + (PC_LETTER[m % 12] ?? PC_LETTER[(m % 12) - 1]);
+// notes: номера клавиш или объекты {m, cls, label}; cls: ok / bad
 function staffSVG(clef, notes, opt = {}) {
   const W = opt.w || 240, gap = 10, top = 34, bot = top + 4 * gap, H = 118;
   const ref = clef === 'treble' ? 30 : 18; // ми первой / соль большой на первой линии
-  let s = `<svg class="staff" viewBox="0 0 ${W} ${H}" role="img" aria-label="${clef === 'treble' ? 'Скрипичный' : 'Басовый'} ключ">`;
+  const items = notes.map((n, i) => {
+    const o = typeof n === 'number' ? { m: n } : { ...n };
+    if (!o.cls && opt.cls) o.cls = opt.cls[i] || '';
+    if (o.label == null && opt.labels) o.label = nm(o.m);
+    o.pos = diaAny(o.m) - ref; o.y = bot - o.pos * gap / 2;
+    return o;
+  });
+  const ys = items.map(o => o.y);
+  const vTop = Math.min(0, Math.min(...ys, top) - 14);
+  const labY = Math.max(H - 4, Math.max(...ys, bot) + 24);
+  const vH = Math.max(H, labY + 4) - vTop;
+  let s = `<svg class="staff" viewBox="0 ${vTop} ${W} ${vH}" role="img" aria-label="${clef === 'treble' ? 'Скрипичный' : 'Басовый'} ключ: ${items.map(o => fullName(o.m)).join(', ')}">`;
   for (let i = 0; i < 5; i++) s += `<line class="sl" x1="4" x2="${W - 4}" y1="${top + i * gap}" y2="${top + i * gap}"/>`;
   s += clef === 'treble'
     ? `<text class="clef" x="8" y="${bot - gap}" font-size="${gap * 4}">𝄞</text>`
     : `<text class="clef" x="8" y="${top + gap}" font-size="${gap * 4}">𝄢</text>`;
   const x0 = 70, span = W - x0 - 20;
-  notes.forEach((m, i) => {
-    const x = notes.length === 1 ? x0 + span / 2 : x0 + (span * i) / (notes.length - 1);
-    const pos = dia(m) - ref; const y = bot - pos * gap / 2;
+  items.forEach((o, i) => {
+    const x = items.length === 1 ? x0 + span / 2 : items.length === 2 ? x0 + span * (0.25 + 0.5 * i) : x0 + (span * i) / (items.length - 1);
+    const { pos, y } = o;
     for (let p = -2; p >= pos; p -= 2) s += `<line class="ll" x1="${x - 12}" x2="${x + 12}" y1="${bot - p * gap / 2}" y2="${bot - p * gap / 2}"/>`;
     for (let p = 10; p <= pos; p += 2) s += `<line class="ll" x1="${x - 12}" x2="${x + 12}" y1="${bot - p * gap / 2}" y2="${bot - p * gap / 2}"/>`;
-    const cls = (opt.cls && opt.cls[i]) || '';
-    s += `<ellipse class="nh ${cls}" cx="${x}" cy="${y}" rx="6.4" ry="4.6" transform="rotate(-18 ${x} ${y})"/>`;
-    if (opt.labels) s += `<text class="lbl" x="${x}" y="${H - 4}">${nm(m)}</text>`;
+    if (!isWhite(o.m)) s += `<text class="acc ${o.cls || ''}" x="${x - 20}" y="${y + 5}">♯</text>`;
+    s += `<ellipse class="nh ${o.cls || ''}" cx="${x}" cy="${y}" rx="6.4" ry="4.6" transform="rotate(-18 ${x} ${y})"/>`;
+    if (o.label) s += `<text class="lbl ${o.cls || ''}" x="${x}" y="${labY}">${o.label}</text>`;
   });
   return s + '</svg>';
 }
+const clefFor = m => m >= 60 ? 'treble' : 'bass';
 
 /* ---------- подсказки ---------- */
 const HINTS = {
@@ -797,18 +817,21 @@ const HINTS = {
     '«Дней подряд» растёт, если заниматься каждый день: достаточно одного выполненного задания.',
     'Прогресс хранится в этом браузере. Чтобы продолжить на другом устройстве: «Настройки» → «Сохранить прогресс в файл», затем на другом устройстве «Загрузить из файла».'],
   lessons: ['Уроки идут в порядке музыкальной школы. Прочитайте объяснение и выполните задание внизу урока на клавиатуре.',
+    'В заданиях нажатая нота показывается на нотном стане: зелёная — верно, красная — ошибка.',
     'Урок засчитывается, когда задание выполнено. Уроки 5–10 появятся позже — они есть в документе «Учебная программа».'],
   notes: ['На стане появляется нота. Нажмите эту клавишу (октава важна) или кнопку с названием под станом (октава не важна).',
+    'Нажатая нота сразу появляется на стане: верная — зелёной, неверная — красной рядом с заданной (заданная помечена «?»). Кнопка с названием ставит ноту в ближайшую октаву.',
     'После двух ошибок нужная клавиша начинает мигать. Ноты, в которых вы ошибались, появляются чаще.',
     'Клавиши компьютера: A S D F G H J K — белые от «до» до «до», W E T Y U — чёрные (R пропущена: между ми и фа чёрной клавиши нет), Z и X — октава ниже и выше.'],
   ear: ['Нажмите «Сыграть» (или пробел) — прозвучат две ноты. Выберите интервал кнопкой. «Дальше» — Enter.',
     'Справа галочками выбирается, какие интервалы спрашивать. Начните с трёх-четырёх и добавляйте новый, когда точность выше 80%.',
-    'После ответа обе ноты подсвечиваются на клавиатуре — сыграйте их сами, чтобы запомнить звучание.'],
+    'После ответа обе ноты подсвечиваются на клавиатуре и появляются на нотном стане — сыграйте их сами, чтобы запомнить звучание.'],
   sing: ['Нажмите «Включить микрофон» и разрешите доступ. Микрофон работает в версии сайта на GitHub Pages; в окне claude.ai браузер его не даёт.',
     '«Спеть услышанное»: сайт играет ноту, вы повторяете голосом. «С листа»: нота показана на стане, звук не играет — «Сыграть ноту» подскажет. «Тюнер»: просто показывает, какую ноту вы поёте.',
     'Нота засчитывается, если держать её около 0,7 секунды с точностью ±40 центов (стрелка в зелёной зоне). Октава не важна: низкий голос может петь на октаву ниже.',
     'Пойте в наушниках, иначе микрофон услышит звук сайта.'],
   keys: ['Свободная игра на экранной клавиатуре или клавишами компьютера и метроном.',
+    'Нажатая нота показывается на нотном стане: от до первой октавы и выше — в скрипичном ключе, ниже — в басовом. Чёрные клавиши записываются с диезом.',
     'Метроном: ползунок задаёт темп, первая доля такта звучит выше. Метроном продолжает звучать в других разделах, пока его не выключить.',
     'Кнопка «Подключить MIDI» понадобится, когда появится инструмент. В нынешнем окне браузер закрывает доступ к MIDI.'],
   docs: ['План проекта и остальные документы. «Открыть» — прочитать, «PDF» — сохранить файл (на GitHub Pages скачивается сразу, на claude.ai сайт спросит разрешение), «Отметить прочитанным».',
@@ -899,7 +922,15 @@ function nextNote() {
   drawNote();
   scrollKbTo(p.m);
 }
-function drawNote(cls) { $('#nt-staff').innerHTML = staffSVG(NT.clef, [NT.target], { w: 260, cls: [cls || ''] }); }
+// ans — нажатая нота: верная показывается зелёной, неверная — красной рядом с заданной
+function drawNote(ans) {
+  let notes = [NT.target];
+  if (ans && ans.m === NT.target) notes = [{ m: NT.target, cls: 'ok', label: nm(NT.target) }];
+  else if (ans) notes = [{ m: NT.target, label: '?' }, { m: ans.m, cls: 'bad', label: nm(ans.m) }];
+  $('#nt-staff').innerHTML = staffSVG(NT.clef, notes, { w: 260 });
+}
+// нота с тем же названием в октаве, ближайшей к m
+const nearestPc = (pc, m) => { let x = m - ((m - pc) % 12 + 12) % 12; if (m - x > 6) x += 12; return x; };
 function renderNoteSide() {
   const t = dayRO();
   $('#nt-day').textContent = t.notes; $('#nt-day-bar').style.width = Math.min(100, t.notes / 30 * 100) + '%';
@@ -908,7 +939,8 @@ function renderNoteSide() {
 }
 function noteAnswer(m, byName) {
   if (NT.lock || NT.target == null) return;
-  const ok = byName ? m % 12 === NT.target % 12 : m === NT.target;
+  if (byName) m = nearestPc(m % 12, NT.target);
+  const ok = m === NT.target;
   const fb = $('#nt-fb');
   if (ok) {
     NT.lock = true;
@@ -918,14 +950,15 @@ function noteAnswer(m, byName) {
     NT.run = NT.wrong ? 0 : NT.run + 1;
     day().notes++; save();
     if (byName) playNote(NT.target, 0.7);
-    flash(NT.target, 'ok', 500); drawNote('ok');
+    flash(NT.target, 'ok', 500); drawNote({ m: NT.target });
     fb.className = 'fb ok'; fb.textContent = `Верно: ${fullName(NT.target)} · ${(ms / 1000).toFixed(1).replace('.', ',')} с`;
     renderNoteSide();
-    setTimeout(() => { if (curSec === 'notes') nextNote(); }, 550);
+    setTimeout(() => { if (curSec === 'notes') nextNote(); }, 900);
   } else {
     NT.wrong++; NT.run = 0;
     fb.className = 'fb bad';
     if (!byName) flash(m, 'bad', 500);
+    drawNote({ m });
     fb.textContent = byName ? `Это не ${nm(m)}. Попробуйте ещё.` : `Нажата ${fullName(m)}. Попробуйте ещё.`;
     if (NT.wrong >= 2) { keyEl[NT.target] && keyEl[NT.target].classList.add('hint'); scrollKbTo(NT.target); fb.textContent = `Правильно: ${fullName(NT.target)} — клавиша мигает.`; }
     renderNoteSide();
@@ -971,7 +1004,7 @@ function earNew() {
   let notes;
   if (mode === 'down') { const r = rnd(60, 76); notes = [r, r - iv]; } else { const r = rnd(53, 72); notes = [r, r + iv]; }
   ET.q = { iv, notes, mode }; ET.wrong = 0; ET.done = false;
-  clearMarks('mark');
+  clearMarks('mark'); $('#ear-staff').innerHTML = '';
   $$('#ear-btns button').forEach(b => { b.classList.remove('ok', 'bad'); b.disabled = !set.includes(+b.dataset.iv); });
   $('#ear-next').disabled = true; $('#ear-show').disabled = false; $('#ear-play').textContent = 'Повторить';
   const fb = $('#ear-fb'); fb.className = 'fb'; fb.textContent = 'Какой это интервал?';
@@ -986,6 +1019,7 @@ function earFinish(correct) {
   const v = IV.find(x => x[0] === ET.q.iv);
   const fb = $('#ear-fb'); fb.className = 'fb ' + (correct ? 'ok' : 'bad');
   fb.textContent = `${correct ? 'Верно' : 'Ответ'}: ${v[2]} (${v[1]}) · ${nm(n0)} — ${nm(n1)}`;
+  $('#ear-staff').innerHTML = staffSVG(Math.min(n0, n1) >= 57 ? 'treble' : 'bass', [n0, n1], { w: 260, labels: true });
   $$('#ear-btns button').forEach(b => { if (+b.dataset.iv === ET.q.iv) b.classList.add('ok'); });
   renderEarSide();
 }
@@ -1288,30 +1322,43 @@ function renderLessonView() {
 function drawTask() {
   const t = LS.l.task; const box = $('#ls-task');
   if (t.type === 'octC') {
-    box.innerHTML = `<div class="chips">${Array.from({ length: t.need }, (_, i) => { const m = [...LS.found][i]; return `<span class="chip ${m != null ? 'ok' : ''}">${m != null ? fullName(m) : 'до ?'}</span>`; }).join('')}</div>`;
+    box.innerHTML = pressedStaff() + `<div class="chips">${Array.from({ length: t.need }, (_, i) => { const m = [...LS.found][i]; return `<span class="chip ${m != null ? 'ok' : ''}">${m != null ? fullName(m) : 'до ?'}</span>`; }).join('')}</div>`;
   } else if (t.type === 'seq') {
-    box.innerHTML = `<div class="chips">${t.notes.map((m, i) => `<span class="chip ${i < LS.i ? 'ok' : i === LS.i && !LS.done ? 'now' : ''}">${nm(m)}${m % 12 === 0 ? ' ' + octLabel(m) : ''}</span>`).join('')}</div>`;
+    box.innerHTML = pressedStaff() + `<div class="chips">${t.notes.map((m, i) => `<span class="chip ${i < LS.i ? 'ok' : i === LS.i && !LS.done ? 'now' : ''}">${nm(m)}${m % 12 === 0 ? ' ' + octLabel(m) : ''}</span>`).join('')}</div>`;
   } else if (t.type === 'staff') {
     const m = t.notes[Math.min(LS.i, t.notes.length - 1)];
-    box.innerHTML = (LS.done ? '' : staffSVG(t.clef, [m], { w: 260 })) + `<div class="chips">${t.notes.map((_, i) => `<span class="chip ${i < LS.i ? 'ok' : i === LS.i && !LS.done ? 'now' : ''}">${i + 1}</span>`).join('')}</div>`;
+    let notes = [m];
+    if (LS.okNote != null) notes = [{ m: LS.okNote, cls: 'ok', label: nm(LS.okNote) }];
+    else if (LS.badNote != null) notes = [{ m, label: '?' }, { m: LS.badNote, cls: 'bad', label: nm(LS.badNote) }];
+    box.innerHTML = staffSVG(t.clef, notes, { w: 260 }) + `<div class="chips">${t.notes.map((_, i) => `<span class="chip ${i < LS.i ? 'ok' : i === LS.i && !LS.done ? 'now' : ''}">${i + 1}</span>`).join('')}</div>`;
   }
+}
+// последняя нажатая клавиша на стане (для заданий без нот на стане)
+function pressedStaff() {
+  if (LS.pressed == null) return '';
+  const p = LS.pressed;
+  return `<div style="max-width:260px">${staffSVG(clefFor(p.m), [{ m: p.m, cls: p.cls, label: nm(p.m) }], { w: 240 })}</div>`;
 }
 function lessonKey(m) {
   if (!LS || LS.done) return;
   const t = LS.l.task; const fb = $('#ls-fb');
+  LS.okNote = null; LS.badNote = null;
   if (t.type === 'octC') {
     if (m % 12 === 0) {
       if (LS.found.has(m)) { fb.className = 'fb'; fb.textContent = 'Эта «до» уже найдена. Найдите в другой октаве.'; return; }
-      LS.found.add(m); flash(m, 'ok'); fb.className = 'fb ok'; fb.textContent = `Верно: ${fullName(m)}`;
+      LS.pressed = { m, cls: 'ok' }; LS.found.add(m); flash(m, 'ok'); fb.className = 'fb ok'; fb.textContent = `Верно: ${fullName(m)}`;
       if (LS.found.size >= t.need) return lessonDone();
-    } else { flash(m, 'bad'); fb.className = 'fb bad'; fb.textContent = `Это ${nm(m)}. «До» — слева от двух чёрных клавиш.`; }
+    } else { LS.pressed = { m, cls: 'bad' }; flash(m, 'bad'); fb.className = 'fb bad'; fb.textContent = `Это ${nm(m)}. «До» — слева от двух чёрных клавиш.`; }
   } else {
     const want = t.notes[LS.i];
     if (m === want) {
       flash(m, 'ok'); clearMarks('hint'); LS.i++; LS.miss = 0; fb.className = 'fb ok'; fb.textContent = `Верно: ${fullName(m)}`;
+      LS.pressed = { m, cls: 'ok' };
+      if (t.type === 'staff') { LS.okNote = m; setTimeout(() => { if (LS && LS.okNote === m && !LS.done) { LS.okNote = null; drawTask(); } }, 700); }
       if (LS.i >= t.notes.length) return lessonDone();
     } else {
       flash(m, 'bad'); LS.miss = (LS.miss || 0) + 1; fb.className = 'fb bad';
+      LS.pressed = { m, cls: 'bad' }; LS.badNote = m;
       fb.textContent = `Нажата ${fullName(m)}.` + (LS.miss >= 2 ? ' Нужная клавиша мигает.' : ' Попробуйте ещё.');
       if (LS.miss >= 2 && keyEl[want]) { keyEl[want].classList.add('hint'); scrollKbTo(want); }
     }
