@@ -53,6 +53,9 @@ nav.tabs::-webkit-scrollbar{display:none}
 .tab:hover{color:var(--ink); background:var(--surface-2)}
 .tab[aria-current="page"]{background:var(--ink); color:var(--bg)}
 .badge{display:inline-grid; place-items:center; min-width:18px; height:18px; padding:0 5px; margin-left:4px; border-radius:9px; background:var(--bad); color:#fff; font-size:11px; font-weight:600; vertical-align:1px}
+.midi-chip{border:1px solid var(--line); background:var(--surface); border-radius:999px; padding:6px 12px; font-size:14px; white-space:nowrap}
+.midi-chip[data-state="on"]{background:var(--ok-soft); color:var(--ok); border-color:var(--ok)}
+.midi-chip[data-state="on"]::before{content:"● "}
 .gear{border:1px solid var(--line); background:var(--surface); border-radius:999px; padding:6px 12px; font-size:14px}
 
 .panel{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:18px}
@@ -260,7 +263,7 @@ body.with-kb .toast{bottom:calc(210px + env(safe-area-inset-bottom,0px))}
   /* телефон: шапка не прилипает, строка про клавиши компьютера скрыта — больше места под задание */
   .top{position:static}
   .top .wrap{gap:8px}
-  .gear{margin-left:auto}
+  .midi-chip{margin-left:auto; font-size:13px; padding:5px 10px} .midi-chip[hidden] + .gear{margin-left:auto}
   nav.tabs{order:3; flex-basis:100%}
   .dock-info{display:none}
   .kb-wrap{padding-top:6px}
@@ -282,6 +285,7 @@ body.with-kb .toast{bottom:calc(210px + env(safe-area-inset-bottom,0px))}
       <button class="tab" data-go="keys">Клавиатура</button>
       <button class="tab" data-go="docs">Документы<span class="badge" id="docs-badge" hidden></span></button>
     </nav>
+    <button class="midi-chip" id="midi-chip" data-state="off" hidden>Подключить синтезатор</button>
     <button class="gear" id="gear" aria-expanded="false" aria-controls="settings">Настройки</button>
   </div>
   <div class="wrap">
@@ -333,7 +337,7 @@ body.with-kb .toast{bottom:calc(210px + env(safe-area-inset-bottom,0px))}
         <div class="label" style="margin-bottom:8px">План на сегодня</div>
         <ul class="plan" id="plan"></ul>
         <div class="note-card">
-          <b>Инструмент: Yamaha PSR-R300, подключён по MIDI.</b> При каждом открытии сайта: «Клавиатура» → «Подключить MIDI», и можно отвечать клавишами синтезатора во всех разделах. Подробности — в документе <a href="#docs" data-doc="instrument">«Инструмент»</a>.
+          <b>Инструмент: Yamaha PSR-R300, подключён по MIDI.</b> Сайт подключает синтезатор сам — вверху зелёный значок «Синтезатор подключён». Если значок серый, нажмите на него. Подробности — в документе <a href="#docs" data-doc="instrument">«Инструмент»</a>.
         </div>
       </div>
       <div>
@@ -797,30 +801,54 @@ document.addEventListener('keyup', e => { const m = held[e.code]; if (m != null)
 window.addEventListener('blur', () => { Object.keys(held).forEach(c => { release(held[c]); delete held[c]; }); });
 
 /* MIDI */
-$('#midi-btn').addEventListener('click', async () => {
-  const st = $('#midi-state');
-  if (!navigator.requestMIDIAccess) { st.textContent = 'Этот браузер не поддерживает MIDI. Нужен Chrome или Edge на компьютере либо Chrome на Android.'; return; }
-  try {
-    const acc = await navigator.requestMIDIAccess();
-    const hook = () => {
-      const names = [];
-      acc.inputs.forEach(inp => {
-        names.push(inp.name);
-        inp.onmidimessage = ev => {
-          const [s, n, v] = ev.data; const c = s & 0xf0;
-          if (c === 0x90 && v > 0) press(n, 'midi');
-          else if (c === 0x80 || (c === 0x90 && v === 0)) release(n);
-        };
-      });
-      st.textContent = names.length ? 'Подключено: ' + names.join(', ') : 'Доступ есть, но инструмент не найден. Подключите его по USB.';
+let midiAcc = null;
+// значок в шапке и надпись в разделе «Клавиатура»
+function midiShow(text, state) {
+  $('#midi-state').textContent = text;
+  const chip = $('#midi-chip');
+  chip.hidden = state === 'none';
+  chip.dataset.state = state;
+  chip.textContent = state === 'on' ? 'Синтезатор подключён' : 'Подключить синтезатор';
+  $('#midi-btn').textContent = state === 'on' ? 'Подключено' : 'Подключить MIDI';
+}
+function midiHook() {
+  const names = [];
+  midiAcc.inputs.forEach(inp => {
+    names.push(inp.name);
+    inp.onmidimessage = ev => {
+      const [s, n, v] = ev.data; const c = s & 0xf0;
+      if (c === 0x90 && v > 0) press(n, 'midi');
+      else if (c === 0x80 || (c === 0x90 && v === 0)) release(n);
     };
-    hook(); acc.onstatechange = hook;
+  });
+  if (names.length) midiShow('Подключено: ' + names.join(', '), 'on');
+  else midiShow('Доступ есть, но синтезатор не найден. Проверьте, что кабель USB-MIDI вставлен в компьютер и в синтезатор, — подключится сам.', 'off');
+}
+async function connectMidi(silent) {
+  if (!navigator.requestMIDIAccess) { if (!silent) midiShow('Этот браузер не поддерживает MIDI. Нужен Chrome или Edge на компьютере либо Chrome на Android.', 'none'); return; }
+  if (midiAcc) { midiHook(); return; }
+  try {
+    midiAcc = await navigator.requestMIDIAccess();
+    midiAcc.onstatechange = midiHook;
+    midiHook();
   } catch (err) {
-    st.textContent = IN_CLAUDE
+    midiAcc = null;
+    if (silent) return;
+    midiShow(IN_CLAUDE
       ? 'В окне claude.ai браузер закрывает доступ к MIDI. Откройте версию сайта на GitHub Pages — см. документ «Технологии».'
-      : 'Браузер не дал доступ к MIDI. Разрешите его в адресной строке и нажмите кнопку снова.';
+      : 'Браузер не дал доступ к MIDI. Нажмите на значок слева от адреса сайта, разрешите MIDI и нажмите кнопку снова.', 'off');
   }
-});
+}
+// автоподключение: если доступ к MIDI уже разрешали, подключаемся сразу при открытии страницы
+async function autoMidi() {
+  if (IN_CLAUDE || !navigator.requestMIDIAccess) return;
+  $('#midi-chip').hidden = false;
+  let state = 'prompt';
+  try { state = (await navigator.permissions.query({ name: 'midi' })).state; } catch (e) {}
+  if (state === 'granted') connectMidi(true);
+}
+$('#midi-btn').addEventListener('click', () => connectMidi(false));
+$('#midi-chip').addEventListener('click', () => { if ($('#midi-chip').dataset.state === 'on') go('keys'); else connectMidi(false); });
 
 /* ---------- нотный стан ---------- */
 // ступень на стане для любой клавиши: чёрная пишется как диез ближайшей белой снизу
@@ -884,7 +912,7 @@ const HINTS = {
   keys: ['Свободная игра на экранной клавиатуре или клавишами компьютера и метроном.',
     'Нажатая нота показывается на нотном стане: от до первой октавы и выше — в скрипичном ключе, ниже — в басовом. Чёрные клавиши записываются с диезом.',
     'Метроном: ползунок задаёт темп, первая доля такта звучит выше. Метроном продолжает звучать в других разделах, пока его не выключить.',
-    '«Подключить MIDI» — нажимать при каждом открытии сайта, синтезатор должен быть подключён кабелем USB-MIDI. Работает в версии на GitHub Pages в Chrome или Edge; в копии на claude.ai браузер MIDI не даёт. Если клавиши не определяются — поменяйте местами штекеры MIDI IN и MIDI OUT. Двойной звук убирается громкостью сайта в «Настройках».'],
+    'Синтезатор подключается сам при открытии сайта, если вы уже разрешали доступ к MIDI: вверху появляется зелёный значок «Синтезатор подключён». В первый раз нажмите «Подключить MIDI» (или значок «Подключить синтезатор» вверху) и разрешите доступ. Работает в версии на GitHub Pages в Chrome или Edge. Если клавиши не определяются — поменяйте местами штекеры MIDI IN и MIDI OUT. Двойной звук убирается громкостью сайта в «Настройках».'],
   docs: ['План проекта и остальные документы. «Открыть» — прочитать, «PDF» — сохранить файл (на GitHub Pages скачивается сразу, на claude.ai сайт спросит разрешение), «Отметить прочитанным».',
     'Когда документ обновляется, он снова становится «не прочитан», а у вкладки «Документы» появляется счётчик.']
 };
@@ -1802,6 +1830,7 @@ const h = (location.hash || '').slice(1);
 go(SECS.includes(h) ? h : 'today');
 loadDocs();
 initCloud();
+autoMidi();
 })();
 </script>
 
