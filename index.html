@@ -1593,12 +1593,14 @@ function pressedStaff() {
   return `<div style="max-width:260px">${staffSVG(clefFor(p.m), [{ m: p.m, cls: p.cls, label: nm(p.m) }], { w: 240 })}</div>`;
 }
 function lessonKey(m) {
-  if (!LS || LS.done) return;
+  if (!LS) return;
   const t = LS.l.task; const fb = $('#ls-fb');
+  // после прохождения стан продолжает показывать нажатые ноты (в заданиях без нот на стане)
+  if (LS.done) { if (t.type === 'octC' || t.type === 'seq') { LS.pressed = { m, cls: '' }; drawTask(); } return; }
   LS.okNote = null; LS.badNote = null;
   if (t.type === 'octC') {
     if (m % 12 === 0) {
-      if (LS.found.has(m)) { fb.className = 'fb'; fb.textContent = 'Эта «до» уже найдена. Найдите в другой октаве.'; return; }
+      if (LS.found.has(m)) { LS.pressed = { m, cls: 'ok' }; drawTask(); fb.className = 'fb'; fb.textContent = 'Эта «до» уже найдена. Найдите в другой октаве.'; return; }
       LS.pressed = { m, cls: 'ok' }; LS.found.add(m); flash(m, 'ok'); fb.className = 'fb ok'; fb.textContent = `Верно: ${fullName(m)}`;
       if (LS.found.size >= t.need) return lessonDone();
     } else { LS.pressed = { m, cls: 'bad' }; flash(m, 'bad'); fb.className = 'fb bad'; fb.textContent = `Это ${nm(m)}. «До» — слева от двух чёрных клавиш.`; }
