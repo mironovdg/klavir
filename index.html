@@ -236,7 +236,7 @@ code{font-size:.9em; background:var(--surface-2); padding:1px 5px; border-radius
 .dock{position:sticky; bottom:0; z-index:15; background:var(--bg); border-top:1px solid var(--line); padding-bottom:env(safe-area-inset-bottom,0px)}
 .dock-info{display:flex; gap:14px; flex-wrap:wrap; align-items:center; justify-content:space-between; font-size:13px; color:var(--muted); padding-block:6px}
 .kb-wrap{overflow-x:auto; padding-bottom:8px; overscroll-behavior-x:contain}
-.kb{--kw:34px; position:relative; height:150px; width:calc(29 * var(--kw)); display:flex; user-select:none; -webkit-user-select:none; touch-action:pan-x; margin:0 auto}
+.kb{--kw:min(34px, calc((100vw - 28px) / 36)); position:relative; height:150px; width:calc(36 * var(--kw)); display:flex; user-select:none; -webkit-user-select:none; touch-action:pan-x; margin:0 auto}
 .wk{flex:0 0 var(--kw); height:100%; background:#FBFBF8; border:1px solid #2B2D33; border-left-width:0; border-radius:0 0 5px 5px; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; padding:0 0 7px; font-size:11px; line-height:1.15; color:#50555F; box-shadow:inset 0 -5px 0 #E6E6E0}
 .wk:first-child{border-left-width:1px}
 .wk .oc{font-size:9.5px; color:#8A8F99}
@@ -245,6 +245,7 @@ code{font-size:.9em; background:var(--surface-2); padding:1px 5px; border-radius
 .wk.ok{background:#BFE6CD} .bk.ok{background:#2E7A4E}
 .wk.bad{background:#F4C6BF} .bk.bad{background:#A8392E}
 .wk.mark{background:#C9D4F4} .bk.mark{background:#34509E}
+.wk.got{background:#BFE6CD} .bk.got{background:#2E7A4E}
 .wk.hint, .bk.hint{animation:pulse 1s ease-in-out infinite}
 @keyframes pulse{50%{box-shadow:inset 0 0 0 3px #2C4AA6, inset 0 -5px 0 #E6E6E0}}
 body:not(.with-kb) .dock{display:none}
@@ -536,6 +537,12 @@ body.with-kb .toast{bottom:calc(210px + env(safe-area-inset-bottom,0px))}
           <p id="midi-state" class="muted" style="margin:6px 0 10px; font-size:14px">Не подключён.</p>
           <button class="btn" id="midi-btn">Подключить MIDI</button>
         </div>
+        <div class="panel">
+          <div class="label">Проверка синтезатора</div>
+          <p id="chk-text" class="muted" style="margin:6px 0 10px; font-size:14px"></p>
+          <div class="row"><button class="btn" id="chk-start">Проверить синтезатор</button><button class="btn primary" id="chk-stop" hidden>Закончить проверку</button></div>
+          <div class="fb" id="chk-result" hidden aria-live="polite"></div>
+        </div>
       </div>
     </div>
   </section>
@@ -573,7 +580,8 @@ const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
 /* ---------- ноты и названия ---------- */
-const LOW = 36, HIGH = 84; // до большой — до третьей октавы
+const LOW = 36, HIGH = 96; // 61 клавиша, как у Yamaha PSR-R300: до большой — до четвёртой октавы
+const NKEYS = HIGH - LOW + 1;
 const PC_LETTER = [0, null, 1, null, 2, 3, null, 4, null, 5, null, 6];
 const NAMES = {
   ru: ['до', 'до♯', 'ре', 'ре♯', 'ми', 'фа', 'фа♯', 'соль', 'соль♯', 'ля', 'ля♯', 'си'],
@@ -581,8 +589,8 @@ const NAMES = {
 };
 const IN_CLAUDE = !!(window.claude && window.claude.use); // открыт ли сайт внутри claude.ai
 const OCT_GEN = { 0: 'субконтроктавы', 7: 'четвёртой октавы', 8: 'пятой октавы', 1: 'контроктавы',2: 'большой октавы', 3: 'малой октавы', 4: 'первой октавы', 5: 'второй октавы', 6: 'третьей октавы' };
-const OCT_NOM = { 2: 'большая', 3: 'малая', 4: 'первая', 5: 'вторая', 6: 'третья' };
-const OCT_TAG = { 2: 'бол.', 3: 'мал.', 4: '1', 5: '2', 6: '3' };
+const OCT_NOM = { 2: 'большая', 3: 'малая', 4: 'первая', 5: 'вторая', 6: 'третья', 7: 'четвёртая' };
+const OCT_TAG = { 2: 'бол.', 3: 'мал.', 4: '1', 5: '2', 6: '3', 7: '4' };
 const WHITE_PCS = [0, 2, 4, 5, 7, 9, 11];
 const isWhite = m => PC_LETTER[m % 12] !== null;
 const octOf = m => Math.floor(m / 12) - 1;
@@ -793,7 +801,7 @@ document.addEventListener('keydown', e => {
   const k = CODE[e.code]; if (!k) return;
   e.preventDefault(); if (e.repeat) return;
   if (k === 'z') { kbOct = Math.max(2, kbOct - 1); kbInfo(); scrollKbTo(kbOct * 12 + 12 + 5); return; }
-  if (k === 'x') { kbOct = Math.min(5, kbOct + 1); kbInfo(); scrollKbTo(kbOct * 12 + 12 + 5); return; }
+  if (k === 'x') { kbOct = Math.min(6, kbOct + 1); kbInfo(); scrollKbTo(kbOct * 12 + 12 + 5); return; }
   const m = (kbOct + 1) * 12 + KMAP[k];
   held[e.code] = m; press(m, 'pc');
 });
@@ -811,18 +819,95 @@ function midiShow(text, state) {
   chip.textContent = state === 'on' ? 'Синтезатор подключён' : 'Подключить синтезатор';
   $('#midi-btn').textContent = state === 'on' ? 'Подключено' : 'Подключить MIDI';
 }
+// настройки синтезатора на этом компьютере (не входят в прогресс): { [имя входа]: { shift, ch, at, got } }
+const MIDI_KEY = 'klavir-midi';
+let midiCfg = {};
+try { midiCfg = JSON.parse(localStorage.getItem(MIDI_KEY)) || {}; } catch (e) {}
+function saveMidiCfg() { try { localStorage.setItem(MIDI_KEY, JSON.stringify(midiCfg)); } catch (e) {} }
+const lastOn = {}; // время последнего нажатия клавиши: один удар не считаем дважды
+function midiNote(name, st, n, v) {
+  const c = st & 0xf0, ch = st & 0x0f;
+  const on = c === 0x90 && v > 0, off = c === 0x80 || (c === 0x90 && v === 0);
+  if (!on && !off) return;
+  if (on && CHK.on && CHK.step === 1) { chkFirst(name, n, ch); return; }
+  const cfg = midiCfg[name];
+  // ноты аккомпанемента и второго тембра идут по другим каналам — их не считаем
+  if (cfg && cfg.ch != null ? ch !== cfg.ch : ch === 9) return;
+  const m = n + (cfg ? cfg.shift : 0);
+  if (off) { release(m); return; }
+  const now = performance.now();
+  if (lastOn[m] && now - lastOn[m] < 40) return;
+  lastOn[m] = now;
+  if (CHK.on && CHK.step === 2) chkKey(m);
+  press(m, 'midi');
+}
+let midiNames = [];
 function midiHook() {
   const names = [];
   midiAcc.inputs.forEach(inp => {
     names.push(inp.name);
-    inp.onmidimessage = ev => {
-      const [s, n, v] = ev.data; const c = s & 0xf0;
-      if (c === 0x90 && v > 0) press(n, 'midi');
-      else if (c === 0x80 || (c === 0x90 && v === 0)) release(n);
-    };
+    inp.onmidimessage = ev => { const d = ev.data; if (d && d.length >= 3) midiNote(inp.name, d[0], d[1], d[2]); };
   });
+  midiNames = names;
   if (names.length) midiShow('Подключено: ' + names.join(', '), 'on');
   else midiShow('Доступ есть, но синтезатор не найден. Проверьте, что кабель USB-MIDI вставлен в компьютер и в синтезатор, — подключится сам.', 'off');
+  chkPaint();
+}
+/* проверка синтезатора: самая левая клавиша и все 61 клавиша по очереди */
+const CHK = { on: false, step: 0, dev: '', got: new Set() };
+const listNames = ms => ms.map(fullName).join(', ');
+function chkPaint() {
+  const t = $('#chk-text'); if (!t) return;
+  const start = $('#chk-start'), stop = $('#chk-stop');
+  start.hidden = CHK.on; stop.hidden = !CHK.on; start.disabled = !midiNames.length;
+  if (CHK.on) {
+    t.textContent = CHK.step === 1
+      ? 'Нажмите на синтезаторе самую левую клавишу.'
+      : `Нажмите по очереди все клавиши синтезатора слева направо — белые и чёрные. Дошли до компьютера: ${CHK.got.size} из ${NKEYS}. Дошедшие клавиши на экране зелёные.`;
+    return;
+  }
+  if (!midiNames.length) { t.textContent = 'Подключите синтезатор, чтобы его проверить.'; return; }
+  const cfg = midiCfg[midiNames[0]];
+  if (!cfg) { t.textContent = `Синтезатор ещё не проверен на этом компьютере. Проверка займёт пару минут: сайт запомнит самую левую клавишу и покажет, все ли клавиши (их ${NKEYS}) доходят до компьютера.`; return; }
+  t.textContent = `Проверен ${fmtDay(cfg.at)}: самая левая клавиша — ${fullName(LOW)}` + (cfg.shift ? ` (сайт поправляет сдвиг синтезатора на ${Math.abs(cfg.shift)} ${plural(Math.abs(cfg.shift), 'клавишу', 'клавиши', 'клавиш')})` : '') + (cfg.got != null ? `, до компьютера дошли ${cfg.got} из ${NKEYS} клавиш.` : '.') + ' Сайт запомнил это для этого компьютера и синтезатора.';
+}
+const fmtDay = k => k ? k.split('-').reverse().join('.') : '';
+const plural = (n, a, b, c) => { const d = n % 10, h = n % 100; return d === 1 && h !== 11 ? a : d >= 2 && d <= 4 && (h < 12 || h > 14) ? b : c; };
+function chkStart() {
+  if (!midiNames.length) return;
+  CHK.on = true; CHK.step = 1; CHK.got = new Set(); clearMarks('got');
+  $('#chk-result').hidden = true;
+  chkPaint();
+}
+function chkFirst(name, n, ch) {
+  const shift = LOW - n;
+  midiCfg[name] = { shift, ch, at: todayKey() }; saveMidiCfg();
+  CHK.dev = name; CHK.step = 2;
+  const m = n + shift; lastOn[m] = performance.now();
+  chkKey(m); press(m, 'midi');
+  if (shift % 12) { const r = $('#chk-result'); r.hidden = false; r.className = 'fb'; r.textContent = 'Самая левая клавиша звучит не как «до» — похоже, на синтезаторе включено транспонирование (Transpose). Сайт это учтёт, но лучше вернуть транспонирование на 0 и пройти проверку заново.'; }
+}
+function chkKey(m) {
+  if (m < LOW || m > HIGH) return;
+  CHK.got.add(m); keyEl[m] && keyEl[m].classList.add('got');
+  if (CHK.got.size >= NKEYS) chkStop(); else chkPaint();
+}
+function chkStop() {
+  if (!CHK.on) return;
+  const wasStep = CHK.step; CHK.on = false; CHK.step = 0;
+  const r = $('#chk-result');
+  if (wasStep === 2 && midiCfg[CHK.dev]) {
+    midiCfg[CHK.dev].got = CHK.got.size; saveMidiCfg();
+    const miss = []; for (let m = LOW; m <= HIGH; m++) if (!CHK.got.has(m)) miss.push(m);
+    r.hidden = false;
+    if (!miss.length) { r.className = 'fb ok'; r.textContent = `Все ${NKEYS} клавиш дошли до компьютера. Синтезатор работает с сайтом правильно.`; }
+    else {
+      r.className = 'fb bad';
+      r.textContent = `Не дошли ${miss.length} из ${NKEYS}: ` + (miss.length > 12 ? listNames(miss.slice(0, 12)) + ' и другие' : listNames(miss)) + '. Если вы их нажимали, а звук на синтезаторе был, — сигнал теряется по дороге. Что делать — в «Инструкции пользователя», раздел «Если сайт не слышит часть клавиш».';
+    }
+  }
+  setTimeout(() => clearMarks('got'), wasStep === 2 ? 2500 : 0);
+  chkPaint();
 }
 async function connectMidi(silent) {
   if (!navigator.requestMIDIAccess) { if (!silent) midiShow('Этот браузер не поддерживает MIDI. Нужен Chrome или Edge на компьютере либо Chrome на Android.', 'none'); return; }
@@ -848,6 +933,8 @@ async function autoMidi() {
   if (state === 'granted') connectMidi(true);
 }
 $('#midi-btn').addEventListener('click', () => connectMidi(false));
+$('#chk-start').addEventListener('click', chkStart);
+$('#chk-stop').addEventListener('click', chkStop);
 $('#midi-chip').addEventListener('click', () => { if ($('#midi-chip').dataset.state === 'on') go('keys'); else connectMidi(false); });
 
 /* ---------- нотный стан ---------- */
@@ -912,7 +999,8 @@ const HINTS = {
   keys: ['Свободная игра на экранной клавиатуре или клавишами компьютера и метроном.',
     'Нажатая нота показывается на нотном стане: от до первой октавы и выше — в скрипичном ключе, ниже — в басовом. Чёрные клавиши записываются с диезом.',
     'Метроном: ползунок задаёт темп, первая доля такта звучит выше. Метроном продолжает звучать в других разделах, пока его не выключить.',
-    'Синтезатор подключается сам при открытии сайта, если вы уже разрешали доступ к MIDI: вверху появляется зелёный значок «Синтезатор подключён». В первый раз нажмите «Подключить MIDI» (или значок «Подключить синтезатор» вверху) и разрешите доступ. Работает в версии на GitHub Pages в Chrome или Edge. Если клавиши не определяются — поменяйте местами штекеры MIDI IN и MIDI OUT. Двойной звук убирается громкостью сайта в «Настройках».'],
+    'Синтезатор подключается сам при открытии сайта, если вы уже разрешали доступ к MIDI: вверху появляется зелёный значок «Синтезатор подключён». В первый раз нажмите «Подключить MIDI» (или значок «Подключить синтезатор» вверху) и разрешите доступ. Работает в версии на GitHub Pages в Chrome или Edge. Если клавиши не определяются — поменяйте местами штекеры MIDI IN и MIDI OUT. Двойной звук убирается громкостью сайта в «Настройках».',
+    'Экранная клавиатура — 61 клавиша, как у синтезатора: шесть «до», от до большой до до четвёртой октавы. «Проверить синтезатор»: нажмите самую левую клавишу, потом все клавиши по очереди. Сайт запомнит самую левую клавишу и канал синтезатора на этом компьютере и покажет, какие клавиши не дошли. Ноты аккомпанемента и второго тембра (Dual) сайт после проверки не считает.'],
   docs: ['План проекта и остальные документы. «Открыть» — прочитать, «PDF» — сохранить файл (на GitHub Pages скачивается сразу, на claude.ai сайт спросит разрешение), «Отметить прочитанным».',
     'Когда документ обновляется, он снова становится «не прочитан», а у вкладки «Документы» появляется счётчик.']
 };
@@ -929,6 +1017,7 @@ let curSec = 'today';
 function go(sec) {
   if (!SECS.includes(sec)) sec = 'today';
   if (curSec === 'sing' && sec !== 'sing') micOff();
+  if (CHK.on) chkStop();
   curSec = sec;
   SECS.forEach(s => { $('#sec-' + s).hidden = s !== sec; });
   $$('.tab').forEach(t => { if (t.dataset.go === sec) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current'); });
@@ -1031,6 +1120,11 @@ function drawNote(ans) {
 // нота с тем же названием в октаве, ближайшей к m
 const nearestPc = (pc, m) => { let x = m - ((m - pc) % 12 + 12) % 12; if (m - x > 6) x += 12; return x; };
 const sec = ms => (ms / 1000).toFixed(1).replace('.', ',') + ' с';
+function octMiss(m, want) {
+  if (m === want || (m - want) % 12) return '';
+  const k = Math.abs(m - want) / 12;
+  return ` Нота та, но октава другая: нужная клавиша на ${k === 1 ? 'октаву' : k + ' ' + plural(k, 'октаву', 'октавы', 'октав')} ${want > m ? 'правее' : 'левее'}.`;
+}
 
 /* уровни */
 function lvStats(i) {
@@ -1114,7 +1208,7 @@ function noteAnswer(m, byName) {
     fb.className = 'fb bad';
     if (!byName) flash(m, 'bad', 500);
     drawNote({ m });
-    fb.textContent = byName ? `Это не ${nm(m)}. Попробуйте ещё.` : `Нажата ${fullName(m)}. Попробуйте ещё.`;
+    fb.textContent = byName ? `Это не ${nm(m)}. Попробуйте ещё.` : `Нажата ${fullName(m)}.` + (octMiss(m, NT.target) || ' Попробуйте ещё.');
     if (NT.wrong >= 2) { keyEl[NT.target] && keyEl[NT.target].classList.add('hint'); scrollKbTo(NT.target); fb.textContent = `Правильно: ${fullName(NT.target)} — клавиша мигает.`; }
     renderNoteSide();
   }
@@ -1480,7 +1574,7 @@ $('#bpm').addEventListener('input', e => { S.metro.bpm = +e.target.value; $('#bp
 const paintMeter = segInit('metro-meter', () => S.metro.beats, v => { S.metro.beats = +v; metro.beat = 0; drawBeats(); save(); });
 function enterKeys() {
   $('#bpm').value = S.metro.bpm; $('#bpm-val').textContent = S.metro.bpm; paintMeter(); drawBeats();
-  handler = null; scrollKbTo(66);
+  handler = null; scrollKbTo(66); chkPaint();
 }
 
 /* ---------- уроки ---------- */
@@ -1490,7 +1584,7 @@ const LESSONS = [
 <p>Чёрные клавиши стоят группами — по две и по три. По этим группам находят любую ноту, не считая клавиши подряд.</p>
 <p><b>До</b> — белая клавиша слева от группы из двух чёрных. На экранной клавиатуре внизу каждая «до» подписана.</p>
 <p>Дальше вправо идут ре, ми (справа от двух чёрных), фа (слева от трёх чёрных), соль, ля, си — и снова до.</p>`,
-    task: { type: 'octC', need: 3, title: 'Задание', text: 'Нажмите «до» в трёх разных октавах. Прокрутите клавиатуру, если нужно.' } },
+    task: { type: 'octC', need: 3, title: 'Задание', text: 'Нажмите «до» в трёх разных октавах — на синтезаторе или на экранной клавиатуре.' } },
   { id: 'l2', n: 2, title: 'Названия нот и октавы', short: 'До, ре, ми… и почему «до первой октавы»',
     body: `<p>Семь нот: <b>до, ре, ми, фа, соль, ля, си</b>. После си снова начинается до, но выше — в следующей октаве.</p>
 <p>Октавы имеют имена. Посередине клавиатуры — <b>первая октава</b>, выше — вторая и третья, ниже — малая и большая. Поэтому полное название ноты звучит так: «соль первой октавы», «ля малой октавы».</p>
@@ -1643,7 +1737,7 @@ function lessonKey(m) {
     } else {
       flash(m, 'bad'); LS.miss = (LS.miss || 0) + 1; fb.className = 'fb bad';
       LS.pressed = { m, cls: 'bad' }; if (t.type === 'staff') LS.badNote = m;
-      fb.textContent = `Нажата ${fullName(m)}.` + (LS.miss >= 2 ? ' Нужная клавиша мигает.' : ' Попробуйте ещё.');
+      fb.textContent = `Нажата ${fullName(m)}.` + octMiss(m, want) + (LS.miss >= 2 ? ' Нужная клавиша мигает.' : octMiss(m, want) ? '' : ' Попробуйте ещё.');
       if (LS.miss >= 2 && keyEl[want]) { keyEl[want].classList.add('hint'); scrollKbTo(want); }
     }
   }
