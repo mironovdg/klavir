@@ -841,12 +841,34 @@ function midiNote(name, st, n, v) {
   if (CHK.on && CHK.step === 2) chkKey(m);
   press(m, 'midi');
 }
+// сигналы от синтезатора: Yamaha шлёт «бегущий статус» (признак нажатия один раз, дальше только номера клавиш);
+// дешёвые кабели отдают такие сигналы обрубленными — восстанавливаем по последнему статусу
+const runSt = {};
+const midiStat = { msgs: 0, odd: 0, notes: 0 };
+function midiParse(name, d) {
+  if (d.length === 1 && d[0] >= 0xf8) return; // служебный сигнал «я на связи» — не считаем
+  midiStat.msgs++;
+  if (d.length < 3 || d[0] < 0x80) midiStat.odd++;
+  let st = runSt[name] || 0, i = 0;
+  while (i < d.length) {
+    const b = d[i];
+    if (b >= 0xf8) { i++; continue; } // служебные (Active Sensing и т. п.)
+    if (b >= 0xf0) { st = 0; i++; while (i < d.length && d[i] < 0x80) i++; continue; } // системные сообщения пропускаем
+    if (b >= 0x80) { st = b; i++; } else if (!st) { i++; continue; }
+    const c = st & 0xf0, len = c === 0xc0 || c === 0xd0 ? 1 : 2;
+    if (i + len > d.length) break;
+    if (c === 0x90 || c === 0x80) { midiStat.notes++; midiNote(name, st, d[i], d[i + 1]); }
+    i += len;
+  }
+  runSt[name] = st;
+  if (CHK.on) chkPaint();
+}
 let midiNames = [];
 function midiHook() {
   const names = [];
   midiAcc.inputs.forEach(inp => {
     names.push(inp.name);
-    inp.onmidimessage = ev => { const d = ev.data; if (d && d.length >= 3) midiNote(inp.name, d[0], d[1], d[2]); };
+    inp.onmidimessage = ev => { if (ev.data && ev.data.length) midiParse(inp.name, ev.data); };
   });
   midiNames = names;
   if (names.length) midiShow('Подключено: ' + names.join(', '), 'on');
@@ -863,7 +885,7 @@ function chkPaint() {
   if (CHK.on) {
     t.textContent = CHK.step === 1
       ? 'Нажмите на синтезаторе самую левую клавишу.'
-      : `Нажмите по очереди все клавиши синтезатора слева направо — белые и чёрные. Дошли до компьютера: ${CHK.got.size} из ${NKEYS}. Дошедшие клавиши на экране зелёные.`;
+      : `Нажмите по очереди все клавиши синтезатора слева направо — белые и чёрные. Дошли до компьютера: ${CHK.got.size} из ${NKEYS}. Дошедшие клавиши на экране зелёные.` + chkSignals();
     return;
   }
   if (!midiNames.length) { t.textContent = 'Подключите синтезатор, чтобы его проверить.'; return; }
@@ -873,9 +895,14 @@ function chkPaint() {
 }
 const fmtDay = k => k ? k.split('-').reverse().join('.') : '';
 const plural = (n, a, b, c) => { const d = n % 10, h = n % 100; return d === 1 && h !== 11 ? a : d >= 2 && d <= 4 && (h < 12 || h > 14) ? b : c; };
+function chkSignals() {
+  const n = midiStat.msgs - CHK.m0, odd = midiStat.odd - CHK.o0;
+  return ` Сигналов от синтезатора: ${n}` + (odd ? `, из них обрубленных (сайт их восстановил): ${odd}.` : '.');
+}
 function chkStart() {
   if (!midiNames.length) return;
-  CHK.on = true; CHK.step = 1; CHK.got = new Set(); clearMarks('got');
+  CHK.on = true; CHK.step = 1; CHK.got = new Set(); clearMarks('got'); clearMarks('down');
+  CHK.m0 = midiStat.msgs; CHK.o0 = midiStat.odd;
   $('#chk-result').hidden = true;
   chkPaint();
 }
@@ -900,13 +927,13 @@ function chkStop() {
     midiCfg[CHK.dev].got = CHK.got.size; saveMidiCfg();
     const miss = []; for (let m = LOW; m <= HIGH; m++) if (!CHK.got.has(m)) miss.push(m);
     r.hidden = false;
-    if (!miss.length) { r.className = 'fb ok'; r.textContent = `Все ${NKEYS} клавиш дошли до компьютера. Синтезатор работает с сайтом правильно.`; }
+    if (!miss.length) { r.className = 'fb ok'; r.textContent = `Все ${NKEYS} клавиша дошла до компьютера. Синтезатор работает с сайтом правильно.` + chkSignals(); }
     else {
       r.className = 'fb bad';
-      r.textContent = `Не дошли ${miss.length} из ${NKEYS}: ` + (miss.length > 12 ? listNames(miss.slice(0, 12)) + ' и другие' : listNames(miss)) + '. Если вы их нажимали, а звук на синтезаторе был, — сигнал теряется по дороге. Что делать — в «Инструкции пользователя», раздел «Если сайт не слышит часть клавиш».';
+      r.textContent = `Не дошли ${miss.length} из ${NKEYS}: ` + (miss.length > 12 ? listNames(miss.slice(0, 12)) + ' и другие' : listNames(miss)) + '.' + chkSignals() + ' Если вы их нажимали, а звук на синтезаторе был, — сигнал теряется по дороге. Что делать — в «Инструкции пользователя», раздел «Если сайт не слышит часть клавиш».';
     }
   }
-  setTimeout(() => clearMarks('got'), wasStep === 2 ? 2500 : 0);
+  setTimeout(() => { clearMarks('got'); clearMarks('down'); }, wasStep === 2 ? 2500 : 0);
   chkPaint();
 }
 async function connectMidi(silent) {
